@@ -23,7 +23,7 @@
 
     <groupId>com.totsp</groupId>
     <artifactId>keying</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0.0</version>
 
     <distributionManagement>
         <repository>
@@ -32,6 +32,13 @@
             <url>https://api.bintray.com/maven/kebernet/maven/keying</url>
         </repository>
     </distributionManagement>
+
+    <properties>
+        <maven.compiler.source>1.7</maven.compiler.source>
+        <maven.compiler.target>1.7</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    </properties>
 
     <dependencies>
         <!-- test dependencies -->
@@ -92,6 +99,17 @@
                 </dependencies>
             </plugin>
         </plugins>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <resource>
+                <directory>src/main/java/</directory>
+                <includes>
+                    <include>com/totsp/keying/definition/*.java</include>
+                </includes>
+            </resource>
+        </resources>
     </build>
     
 </project>

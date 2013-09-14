@@ -14,6 +14,23 @@ the id, like you might do with a composite key in an RDBMS. For other things, yo
 the natural order of you entities to come in a certain for -- say, reverse chronological for your blog. Keying is an
 API that makes this easier.
 
+Maven
+-----
+
+    <repository>
+        <id>kebernet</id>
+        <name>bintray</name>
+        <url>http://dl.bintray.com/kebernet/maven</url>
+    </repository>
+
+    ...
+
+    <dependency>
+        <groupId>com.totsp</groupId>
+        <artifactId>keying</artifactId>
+        <version>1.0.0</version>
+    </dependency>
+
 Usage
 -----
 
