@@ -73,7 +73,7 @@ Suppose you have Users and Groups with a many to many relationship. You might ha
 
         @Id
         @KeyStrategy(value={KeySegment.PROPERTY, KeySegment.PROPERTY},
-                    properties={"lastName", "firstName"})
+                    properties={"groupId", "userId"})
         public String getId(){ ... }
         public String getGroupId() { ... }
         public String getUserId() { ... }
