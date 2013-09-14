@@ -86,7 +86,7 @@ then determines the values and orders in which they will be populated. So if I d
     Membership membership = new Membership("Administrators", "Bob");
     KeyGenerator.key(membership);
 
-the Id property on the Membership instance will be set to "Bob:Administrators". (You can also declare a "separator" value
+the Id property on the Membership instance will be set to "Administrators:Bob". (You can also declare a "separator" value
 on the key strategy that will override the ":" default.)
 
 This example is a "Deterministic Key": that means given the same object with the same values, you get the same results.
