@@ -80,5 +80,16 @@ public class PropertyComponentTest {
         assertEquals("Cooper,Robert", bean.getId());
     }
 
+    @Test
+    public void testDontRekey(){
+        TestPropertyBean bean = new TestPropertyBean();
+        bean.setFirstName("Robert");
+        bean.setLastName("Cooper");
+        bean.setId("abc");
+        bean = KeyGenerator.key(bean);
+        assertEquals("abc", bean.getId());
+
+    }
+
 
 }

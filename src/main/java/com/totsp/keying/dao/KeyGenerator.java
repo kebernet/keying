@@ -86,7 +86,6 @@ public class KeyGenerator {
         if(!gen.keyed(o)){
             get(o).key(o);
         }
-        get(o).key(o);
         return o;
     }
 
