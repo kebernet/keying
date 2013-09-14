@@ -43,11 +43,12 @@ public class Setter<T> {
         if(!found){
             try {
                 for(PropertyDescriptor pd : Introspector.getBeanInfo(type).getPropertyDescriptors()){
-                    if(pd.getReadMethod() != null && (strategy = pd.getReadMethod().getAnnotation(KeyStrategy.class)) != null && pd.getWriteMethod() != null){
+                    if(pd.getReadMethod() != null & (strategy = pd.getReadMethod().getAnnotation(KeyStrategy.class)) != null && pd.getWriteMethod() != null){
                         mutator = new PropertyMutator<T>(pd);
+                        break;
                     } else if(pd.getWriteMethod() != null && (strategy = pd.getWriteMethod().getAnnotation(KeyStrategy.class)) != null){
-                        mutator = new PropertyMutator<T>(pd);
-
+                        strategy = pd.getWriteMethod().getAnnotation(KeyStrategy.class);
+                        break;
                     }
                 }
             } catch (IntrospectionException e) {

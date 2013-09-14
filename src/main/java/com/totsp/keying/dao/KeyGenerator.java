@@ -47,12 +47,12 @@ public class KeyGenerator {
             for(KeySegment segment : t.strategy.value()){
                 switch(segment){
                     case PROPERTY:
-                        if(t.strategy.properties().length -1 > propertyIndex){
-                            throw new KeyException("Expected "+propertyIndex+" properties but found only "+propertyIndex);
+                        if(t.strategy.properties().length < propertyIndex){
+                            throw new KeyException("Expected "+(propertyIndex + 1)+" properties but found only "+ t.strategy.properties().length);
                         }
                         components.add(new PropertyComponent<T>(new Reader<T>(type, t.strategy.properties()[propertyIndex])));
                         propertyIndex++;
-                        if(t.strategy.properties().length -1 > propertyIndex){
+                        if(t.strategy.properties().length > propertyIndex +1){
                             throw new KeyException("Excented "+propertyIndex+" properties but found an extra "+(t.strategy.properties().length -1 -propertyIndex));
                         }
                         break;

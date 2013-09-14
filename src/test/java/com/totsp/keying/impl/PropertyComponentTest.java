@@ -15,6 +15,7 @@
  */
 package com.totsp.keying.impl;
 
+import com.totsp.keying.dao.KeyGenerator;
 import com.totsp.keying.reflect.KeyException;
 import com.totsp.keying.reflect.Reader;
 import org.junit.Test;
@@ -68,6 +69,15 @@ public class PropertyComponentTest {
         bean.setLastName("Cooper");
         Reader<TestPropertyBean> reader = new Reader<TestPropertyBean>(TestPropertyBean.class, "badProperty");
         String read = reader.read(bean);
+    }
+
+    @Test
+    public void testKey(){
+        TestPropertyBean bean = new TestPropertyBean();
+        bean.setFirstName("Robert");
+        bean.setLastName("Cooper");
+        KeyGenerator.key(bean);
+        assertEquals("Cooper,Robert", bean.getId());
     }
 
 
