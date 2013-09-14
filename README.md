@@ -83,7 +83,7 @@ Suppose you have Users and Groups with a many to many relationship. You might ha
 In this example, there are two parts to the KeyStrategy value, both are PROPERTY segments. The "properties" array
 then determines the values and orders in which they will be populated. So if I do:
 
-    Membership membership = new Membership("Bob", "Administrators");
+    Membership membership = new Membership("Administrators", "Bob");
     KeyGenerator.key(membership);
 
 the Id property on the Membership instance will be set to "Bob:Administrators". (You can also declare a "separator" value
