@@ -25,12 +25,12 @@ import com.google.common.base.Strings;
 import com.googlecode.objectify.Key;
 import com.googlecode.objectify.LoadResult;
 import com.googlecode.objectify.NotFoundException;
+import com.googlecode.objectify.Objectify;
 import com.googlecode.objectify.cmd.Query;
 
 import javax.annotation.Nullable;
 import java.util.Map;
 
-import static com.totsp.keying.dao.OfyService.ofy;
 
 /**
  * An abstract DAO class you can extend to work with keyed classes.
@@ -231,6 +231,10 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
 
     protected void afterOperation(){
 
+    }
+
+    protected Objectify ofy(){
+        return OfyService.ofy();
     }
 
 
