@@ -26,10 +26,11 @@ public class TestPropertyBean {
     private String id;
     private String firstName;
     private String lastName;
+    private String middleName;
     private int age = 39;
 
-    @KeyStrategy(value={KeySegment.PROPERTY, KeySegment.PROPERTY},
-            properties={"lastName", "firstName"}, separator=",")
+    @KeyStrategy(value={KeySegment.PROPERTY, KeySegment.PROPERTY, KeySegment.PROPERTY},
+            properties={"lastName", "firstName", "middleName"}, separator=",")
     public String getId() {
         return id;
     }
@@ -56,5 +57,13 @@ public class TestPropertyBean {
 
     public void getBadProperty(){
         throw new UnsupportedOperationException();
+    }
+
+    public String getMiddleName() {
+        return middleName;
+    }
+
+    public void setMiddleName(String middleName) {
+        this.middleName = middleName;
     }
 }

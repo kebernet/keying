@@ -75,15 +75,17 @@ public class PropertyComponentTest {
     public void testKey(){
         TestPropertyBean bean = new TestPropertyBean();
         bean.setFirstName("Robert");
+        bean.setMiddleName("Thomas");
         bean.setLastName("Cooper");
         KeyGenerator.key(bean);
-        assertEquals("Cooper,Robert", bean.getId());
+        assertEquals("Cooper,Robert,Thomas", bean.getId());
     }
 
     @Test
     public void testDontRekey(){
         TestPropertyBean bean = new TestPropertyBean();
         bean.setFirstName("Robert");
+        bean.setMiddleName("Thomas");
         bean.setLastName("Cooper");
         bean.setId("abc");
         bean = KeyGenerator.key(bean);

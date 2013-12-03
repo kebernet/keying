@@ -27,6 +27,7 @@ import com.totsp.keying.reflect.Reader;
 import com.totsp.keying.reflect.Setter;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -48,12 +49,12 @@ public class KeyGenerator {
                 switch(segment){
                     case PROPERTY:
                         if(t.strategy.properties().length < propertyIndex){
-                            throw new KeyException("Expected "+(propertyIndex + 1)+" properties but found only "+ t.strategy.properties().length);
+                            throw new KeyException("Expected "+(propertyIndex + 1)+" properties but found only "+ Arrays.asList(t.strategy.properties()));
                         }
                         components.add(new PropertyComponent<T>(new Reader<T>(type, t.strategy.properties()[propertyIndex])));
                         propertyIndex++;
-                        if(t.strategy.properties().length > propertyIndex +1){
-                            throw new KeyException("Excented "+propertyIndex+" properties but found an extra "+(t.strategy.properties().length -1 -propertyIndex));
+                        if(t.strategy.properties().length < propertyIndex){
+                            throw new KeyException("Expected "+ (propertyIndex +1) +" properties but found an extra "+(t.strategy.properties().length -1 -propertyIndex)+" "+ Arrays.asList(t.strategy.properties()));
                         }
                         break;
                     case UUID:
