@@ -5,6 +5,8 @@ This is a library for implemented some common Datastore keying strategies on Goo
 More specifically, this is designed to help with several different keying strategies for indexing and natural order
 manipulation with Objectfy.
 
+[![Build Status](https://travis-ci.org/kebernet/keying.png?branch=master)](https://travis-ci.org/kebernet/keying)
+
 Purpose
 -------
 
