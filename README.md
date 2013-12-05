@@ -28,7 +28,7 @@ Maven
     <dependency>
         <groupId>com.totsp</groupId>
         <artifactId>keying</artifactId>
-        <version>1.0.2</version>
+        <version>1.0.6</version>
     </dependency>
 
 Usage
