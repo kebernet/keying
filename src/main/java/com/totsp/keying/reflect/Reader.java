@@ -27,6 +27,7 @@ import java.util.logging.Logger;
 public class Reader<T> {
     private static final Logger LOGGER = Logger.getLogger(Reader.class.getCanonicalName());
     private final Accessor<T> accessor;
+    public static Boolean convertToLowerCase = false;
 
     public Reader(Class<T> type, String name){
         Accessor<T> accessor = null;
@@ -40,7 +41,7 @@ public class Reader<T> {
                 }
             }
         } catch (Exception e) {
-           LOGGER.log(Level.WARNING, "Failed to introspect type: "+type.getCanonicalName(), e);
+            LOGGER.log(Level.WARNING, "Failed to introspect type: "+type.getCanonicalName(), e);
         }
         if(accessor == null){
             for(Field field : type.getDeclaredFields()){
@@ -76,7 +77,11 @@ public class Reader<T> {
         @Override
         public String read(T target) {
             try {
-                return new StringBuilder().append(this.field.get(target)).toString();
+                if(convertToLowerCase){
+                    return new StringBuilder().append(this.field.get(target)).toString().toLowerCase();
+                } else {
+                    return new StringBuilder().append(this.field.get(target)).toString();
+                }
             } catch (IllegalAccessException e) {
                 throw new KeyException("Failed to read from "+field.getName()+" on "+target, e);
             }
