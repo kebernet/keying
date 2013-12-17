@@ -27,6 +27,7 @@ import com.googlecode.objectify.LoadResult;
 import com.googlecode.objectify.NotFoundException;
 import com.googlecode.objectify.Objectify;
 import com.googlecode.objectify.cmd.Query;
+import com.totsp.keying.reflect.Reader;
 
 import javax.annotation.Nullable;
 import java.util.Map;
@@ -41,6 +42,10 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
     /**
      * The factory must be injected by the implementing class
      */
+    public AbstractStringKeyedDao(Class<T> clazz, Boolean useLowerCase) {
+        this.clazz = clazz;
+        Reader.convertToLowerCase =useLowerCase;
+    }
     public AbstractStringKeyedDao(Class<T> clazz) {
         this.clazz = clazz;
     }
