@@ -19,6 +19,7 @@ import com.google.appengine.api.datastore.Cursor;
 import com.google.appengine.api.datastore.EntityNotFoundException;
 import com.google.appengine.api.datastore.QueryResultIterator;
 import com.google.appengine.api.memcache.MemcacheServiceException;
+import com.google.apphosting.api.ApiProxy;
 import com.google.common.base.Function;
 import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
@@ -27,9 +28,12 @@ import com.googlecode.objectify.LoadResult;
 import com.googlecode.objectify.NotFoundException;
 import com.googlecode.objectify.Objectify;
 import com.googlecode.objectify.cmd.Query;
+import com.totsp.keying.reflect.Reader;
 
 import javax.annotation.Nullable;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 
 /**
@@ -38,9 +42,16 @@ import java.util.Map;
 public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
 
     private final Class<T> clazz;
+    private static int ERROR_TRY_NUM = 3;
+    private Logger logger = Logger.getLogger(this.getClass().getName());
+
     /**
      * The factory must be injected by the implementing class
      */
+    public AbstractStringKeyedDao(Class<T> clazz, Boolean useLowerCase) {
+        this.clazz = clazz;
+        Reader.convertToLowerCase =useLowerCase;
+    }
     public AbstractStringKeyedDao(Class<T> clazz) {
         this.clazz = clazz;
     }
@@ -55,7 +66,17 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
     @Override
     public Key<T> save(T entity) {
         entity = KeyGenerator.key(entity);
-        return ofy().save().entity(entity).now();
+        Key<T> savedKey = null;
+        for (int i = 0; i < ERROR_TRY_NUM; i++) {
+            try {
+                savedKey = ofy().save().entity(entity).now();
+                break;
+            } catch(ApiProxy.RPCFailedException e){
+                logger.log(Level.WARNING, "RPCFailedException", e);
+            }
+            sleep(1000);
+        }
+        return savedKey;
     }
 
     /**
@@ -72,7 +93,17 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
                 return KeyGenerator.key(t);
             }
         });
-        return  ofy().save().entities(entities).now();
+        Map<Key<T>, T> keyMap = null;
+        for (int i = 0; i < ERROR_TRY_NUM; i++) {
+            try {
+                keyMap = ofy().save().entities(entities).now();
+                break;
+            } catch(ApiProxy.RPCFailedException e){
+                logger.log(Level.WARNING, "RPCFailedException", e);
+            }
+            sleep(1000);
+        }
+        return keyMap;
     }
 
     /**
@@ -86,7 +117,17 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
      */
     @Override
     public T findById(String id) throws NotFoundException {
-        return this.findById(id, false);
+        T found = null;
+        for (int i = 0; i < ERROR_TRY_NUM; i++) {
+            try {
+                found = this.findById(id, false);
+                break;
+            } catch (ApiProxy.RPCFailedException e) {
+                logger.log(Level.WARNING, "RPCFailedException", e);
+            }
+            sleep(1000);
+        }
+        return found;
     }
 
     private T findById(String id, boolean hasRetried) throws NotFoundException {
@@ -96,11 +137,18 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
         }catch(MemcacheServiceException mse){
             if(!hasRetried){
                 ofy().clear();
-                findById(id, true);
+                result = findById(id, true);
             } else {
                 throw new RuntimeException("Memcache Service is currently unavailable.");
             }
 
+        } catch(ApiProxy.RPCFailedException e){
+            if(!hasRetried){
+                ofy().clear();
+                result = findById(id, true);
+            } else {
+                throw new RuntimeException("RPCFailedException", e);
+            }
         }
         return result;
     }
@@ -132,7 +180,17 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
      */
     @Override
     public Map<String, T> findByIds(Iterable<String> ids) {
-        return ofy().load().type(clazz).ids(ids);
+        Map<String, T> found = null;
+        for (int i = 0; i < ERROR_TRY_NUM; i++) {
+            try {
+                found = ofy().load().type(clazz).ids(ids);
+                break;
+            } catch (ApiProxy.RPCFailedException e) {
+                logger.log(Level.WARNING, "RPCFailedException", e);
+            }
+            sleep(1000);
+        }
+        return found;
     }
 
 
@@ -146,7 +204,17 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
      */
     @Override
     public Map<Key<T>, T> findByKeys(Iterable<Key<T>> keys) {
-        return ofy().load().keys(keys);
+        Map<Key<T>, T> found = null;
+        for (int i = 0; i < ERROR_TRY_NUM; i++) {
+            try {
+                found = ofy().load().keys(keys);
+                break;
+            } catch (ApiProxy.RPCFailedException e) {
+                logger.log(Level.WARNING, "RPCFailedException", e);
+            }
+            sleep(1000);
+        }
+        return found;
     }
 
     /**
@@ -235,6 +303,14 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
 
     protected Objectify ofy(){
         return OfyService.ofy();
+    }
+
+    protected void sleep(int timeInMillSec) {
+        try {
+            Thread.sleep(timeInMillSec);
+        } catch (InterruptedException e) {
+            logger.log(Level.WARNING, "Thread was interrupted in UserAppsScanTask.");
+        }
     }
 
 
