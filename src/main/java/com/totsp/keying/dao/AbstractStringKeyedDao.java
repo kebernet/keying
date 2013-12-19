@@ -29,9 +29,11 @@ import com.googlecode.objectify.NotFoundException;
 import com.googlecode.objectify.Objectify;
 import com.googlecode.objectify.cmd.Query;
 import com.totsp.keying.reflect.Reader;
+import com.totsp.keying.util.RetryHandler;
 
-import javax.annotation.Nullable;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -40,18 +42,30 @@ import java.util.logging.Logger;
  * An abstract DAO class you can extend to work with keyed classes.
  */
 public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
-
+    private final Function<T, T> KEY = new Function<T, T>() {
+        @Override
+        public T apply(@javax.annotation.Nullable T t) {
+            return KeyGenerator.key(t);
+        }
+    };
     private final Class<T> clazz;
     private static int ERROR_TRY_NUM = 3;
     private Logger logger = Logger.getLogger(this.getClass().getName());
+    protected RetryHandler retryHandler = RetryHandler.Builder
+            .retryTimes(3)
+            .every(250, TimeUnit.MILLISECONDS)
+            .withBackoffStrategy(RetryHandler.Builder.EXPONENTIAL)
+            .forExceptions(ApiProxy.RPCFailedException.class, MemcacheServiceException.class)
+            .build();
 
     /**
      * The factory must be injected by the implementing class
      */
     public AbstractStringKeyedDao(Class<T> clazz, Boolean useLowerCase) {
         this.clazz = clazz;
-        Reader.convertToLowerCase =useLowerCase;
+        Reader.convertToLowerCase = useLowerCase;
     }
+
     public AbstractStringKeyedDao(Class<T> clazz) {
         this.clazz = clazz;
     }
@@ -59,24 +73,21 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
     /**
      * save or update entity in datastore entity must be of a type registered with the injected objectify factory
      *
-     * @param entity
-     *            must not be null
+     * @param entity must not be null
      * @return the Key of the saved object
      */
     @Override
-    public Key<T> save(T entity) {
-        entity = KeyGenerator.key(entity);
-        Key<T> savedKey = null;
-        for (int i = 0; i < ERROR_TRY_NUM; i++) {
-            try {
+    public <R extends T> Key<R> save(final R entity) {
+        return retryHandler.executeRuntime(new Callable<Key<R>>() {
+            @Override
+            public Key<R> call() throws Exception {
+                R value = KeyGenerator.key(entity);
+                Key<R> savedKey = null;
                 savedKey = ofy().save().entity(entity).now();
-                break;
-            } catch(ApiProxy.RPCFailedException e){
-                logger.log(Level.WARNING, "RPCFailedException", e);
+
+                return savedKey;
             }
-            sleep(1000);
-        }
-        return savedKey;
+        });
     }
 
     /**
@@ -86,24 +97,14 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
      * @return a map of the saved entities mapped to their datastore keys
      */
     @Override
-    public Map<Key<T>, T> saveAll(Iterable<T> entities) {
-        entities = Iterables.transform(entities, new Function<T, T>() {
+    public <R extends T> Map<Key<R>, R> saveAll(final Iterable<R> entities) {
+        return retryHandler.executeRuntime(new Callable<Map<Key<R>, R>>() {
             @Override
-            public T apply(@javax.annotation.Nullable T t) {
-                return KeyGenerator.key(t);
+            public Map<Key<R>, R> call() throws Exception {
+                Iterable<R> vals = (Iterable<R>) Iterables.transform(entities, KEY);
+                return ofy().save().entities(entities).now();
             }
         });
-        Map<Key<T>, T> keyMap = null;
-        for (int i = 0; i < ERROR_TRY_NUM; i++) {
-            try {
-                keyMap = ofy().save().entities(entities).now();
-                break;
-            } catch(ApiProxy.RPCFailedException e){
-                logger.log(Level.WARNING, "RPCFailedException", e);
-            }
-            sleep(1000);
-        }
-        return keyMap;
     }
 
     /**
@@ -112,119 +113,91 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
      *
      * @param id
      * @return the object of type clazz that matches on the id
-     * @throws EntityNotFoundException
-     *             thrown if no entity object could be found
+     * @throws EntityNotFoundException thrown if no entity object could be found
      */
     @Override
-    public T findById(String id) throws NotFoundException {
-        T found = null;
-        for (int i = 0; i < ERROR_TRY_NUM; i++) {
-            try {
-                found = this.findById(id, false);
-                break;
-            } catch (ApiProxy.RPCFailedException e) {
-                logger.log(Level.WARNING, "RPCFailedException", e);
-            }
-            sleep(1000);
+    public T findById(final String id) throws NotFoundException {
+        try {
+            return this.retryHandler.execute(new Callable<T>() {
+                    @Override
+                    public T call() throws Exception {
+                        return ofy().load().key(Key.create(clazz, id)).safeGet();
+                    }
+                });
+        } catch(NotFoundException e){
+            throw e;
+        } catch(Exception e){
+            throw new RuntimeException(e);
         }
-        return found;
+
+
     }
 
-    private T findById(String id, boolean hasRetried) throws NotFoundException {
-        T result = null;
-        try{
-            result = ofy().load().key(Key.create(clazz,id)).safeGet();
-        }catch(MemcacheServiceException mse){
-            if(!hasRetried){
-                ofy().clear();
-                result = findById(id, true);
-            } else {
-                throw new RuntimeException("Memcache Service is currently unavailable.");
-            }
-
-        } catch(ApiProxy.RPCFailedException e){
-            if(!hasRetried){
-                ofy().clear();
-                result = findById(id, true);
-            } else {
-                throw new RuntimeException("RPCFailedException", e);
-            }
-        }
-        return result;
-    }
 
     /**
-     *
      * get object of type clazz that is stored in the datastore under the param id clazz must be of a type registered
      * with the injected objectify factory
      *
      * @param id
      * @return the object of type clazz that matches on the id
-     * @throws EntityNotFoundException
-     *             thrown if no entity object could be found
+     * @throws EntityNotFoundException thrown if no entity object could be found
      * @author Tomas de Priede
      */
     @Override
     public LoadResult<T> findAsync(String id) throws EntityNotFoundException {
-        return ofy().load().key(Key.create(clazz,id));
+        return ofy().load().key(Key.create(clazz, id));
     }
 
     /**
-
-    /**
+     * /**
      * get entities from datastore that match against the passed in collection of ids
      *
-     * @param ids
-     *            the set of String or Long ids matching against those entities to be retrieved from the datastore
+     * @param ids the set of String or Long ids matching against those entities to be retrieved from the datastore
      * @return all entities that match on the collection of ids. no error is thrown for entities not found in datastore.
      */
     @Override
-    public Map<String, T> findByIds(Iterable<String> ids) {
-        Map<String, T> found = null;
-        for (int i = 0; i < ERROR_TRY_NUM; i++) {
-            try {
-                found = ofy().load().type(clazz).ids(ids);
-                break;
-            } catch (ApiProxy.RPCFailedException e) {
-                logger.log(Level.WARNING, "RPCFailedException", e);
+    public Map<String, T> findByIds(final Iterable <String> ids) {
+        return this.retryHandler.executeRuntime(new Callable<Map<String, T>>() {
+            @Override
+            public Map<String, T> call() throws Exception {
+                return ofy().load().type(clazz).ids(ids);
             }
-            sleep(1000);
-        }
-        return found;
+        });
     }
 
 
     /**
      * get entities from datastore that match against the passed in collection of keys
      *
-     * @param keys
-     *            the set of keys matching against those entities to be retrieved from the datastore
+     * @param keys the set of keys matching against those entities to be retrieved from the datastore
      * @return all entities that match on the collection of keys. no error is thrown for entities not found in
      *         datastore.
      */
     @Override
-    public Map<Key<T>, T> findByKeys(Iterable<Key<T>> keys) {
-        Map<Key<T>, T> found = null;
-        for (int i = 0; i < ERROR_TRY_NUM; i++) {
-            try {
-                found = ofy().load().keys(keys);
-                break;
-            } catch (ApiProxy.RPCFailedException e) {
-                logger.log(Level.WARNING, "RPCFailedException", e);
+    public Map<Key<T>, T> findByKeys(final Iterable<Key<T>> keys) {
+        return this.retryHandler.executeRuntime(new Callable<Map<Key<T>, T>>() {
+            @Override
+            public Map<Key<T>, T> call() throws Exception {
+                return ofy().load().keys(keys);
             }
-            sleep(1000);
-        }
-        return found;
+        });
     }
 
     /**
      * delete object of type clazz that is stored in the datastore under the param id clazz must be of a type registered
      * with the injected objectify factory
+     *
      * @param id
      */
     @Override
-    public void delete(String id) {
-        ofy().delete().type(clazz).id(id).now();
+    public void delete(final String id) {
+        this.retryHandler.executeRuntime(new Callable<Object>() {
+            @Override
+            public Object call() throws Exception {
+                ofy().delete().type(clazz).id(id).now();;
+                return Void.TYPE;
+            }
+        });
     }
 
     /**
@@ -235,21 +208,20 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
      */
     @Override
     public void deleteAll(Iterable<T> entities) {
-        entities = Iterables.transform(entities, new Function<T, T>() {
-            @Nullable
+        final Iterable<T> finalEntities = Iterables.transform(entities, KEY);;
+        this.retryHandler.executeRuntime(new Callable<Object>() {
             @Override
-            public T apply(@Nullable T t) {
-                return KeyGenerator.key(t);
+            public Object call() throws Exception {
+                return ofy().delete().entities(finalEntities).now();
             }
         });
-        ofy().delete().entities(entities).now();
     }
 
     /**
      * delete entities from datastore that match against the passed in collection keys must be of a type string with the
      * injected objectify factory
-     *
-     *            the keys to delete
+     * <p/>
+     * the keys to delete
      */
     @Override
     public void deleteEntitiesByKeys(Iterable<String> stringKeys) {
@@ -293,15 +265,15 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
     }
 
 
-    protected void beforeOperation(){
+    protected void beforeOperation() {
 
     }
 
-    protected void afterOperation(){
+    protected void afterOperation() {
 
     }
 
-    protected Objectify ofy(){
+    protected Objectify ofy() {
         return OfyService.ofy();
     }
 
