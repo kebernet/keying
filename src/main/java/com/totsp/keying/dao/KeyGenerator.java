@@ -76,7 +76,7 @@ public class KeyGenerator {
                         throw new KeyException("Unknown segment type "+segment);
                 }
             }
-            generator = new Generator<T>(components.toArray(new Component[components.size()]), t);
+            generator = new Generator<T>(components.toArray(new Component[components.size()]), t, t.strategy.lowerCase());
             GENERATORS.put(o.getClass(), generator);
         }
         return generator;

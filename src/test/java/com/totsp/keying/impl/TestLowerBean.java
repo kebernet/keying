@@ -15,31 +15,38 @@
  */
 package com.totsp.keying.impl;
 
-import com.totsp.keying.reflect.Reader;
-import org.junit.Test;
-
-import static junit.framework.Assert.assertTrue;
-import static junit.framework.TestCase.assertFalse;
+import com.googlecode.objectify.annotation.Id;
+import com.totsp.keying.definition.KeySegment;
+import com.totsp.keying.definition.KeyStrategy;
 
 /**
  * Created with IntelliJ IDEA.
- * User: BradGross
- * Date: 12/17/13
- * Time: 3:01 PM
+ * User: Robert
+ * Date: 12/20/13
+ * Time: 12:05 PM
  * To change this template use File | Settings | File Templates.
  */
-public class TestReader {
+public class TestLowerBean {
 
-    private class ClassToBeRead {
-        String fieldToRead = "README";
+    @Id
+    private String id;
+
+    private String name;
+
+    @KeyStrategy(value={KeySegment.PROPERTY}, properties = "name", lowerCase = true)
+    public String getId() {
+        return id;
     }
 
-    @Test
-    public void testReaderDefaultsToMaintainCase() {
-        Reader reader = new Reader(ClassToBeRead.class, "fieldToRead");
-        String readField = reader.read(new ClassToBeRead());
-        assertFalse(readField.equals("readme"));
-        assertTrue(readField.equals("README"));
+    public void setId(String id) {
+        this.id = id;
     }
 
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
 }

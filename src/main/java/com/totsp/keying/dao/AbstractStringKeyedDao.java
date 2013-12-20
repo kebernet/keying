@@ -22,20 +22,21 @@ import com.google.appengine.api.memcache.MemcacheServiceException;
 import com.google.apphosting.api.ApiProxy;
 import com.google.common.base.Function;
 import com.google.common.base.Strings;
-import com.google.common.collect.Iterables;
 import com.googlecode.objectify.Key;
 import com.googlecode.objectify.LoadResult;
 import com.googlecode.objectify.NotFoundException;
 import com.googlecode.objectify.Objectify;
 import com.googlecode.objectify.cmd.Query;
-import com.totsp.keying.reflect.Reader;
 import com.totsp.keying.util.RetryHandler;
 
+import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static com.google.common.collect.Iterables.transform;
 
 
 /**
@@ -50,22 +51,25 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
     };
     private final Class<T> clazz;
     private static int ERROR_TRY_NUM = 3;
+    private static final int ERROR_BACKOFF_MILLIS = 250;
     private Logger logger = Logger.getLogger(this.getClass().getName());
     protected RetryHandler retryHandler = RetryHandler.Builder
-            .retryTimes(3)
-            .every(250, TimeUnit.MILLISECONDS)
+            .retryTimes(ERROR_TRY_NUM)
+            .every(ERROR_BACKOFF_MILLIS, TimeUnit.MILLISECONDS)
             .withBackoffStrategy(RetryHandler.Builder.EXPONENTIAL)
             .forExceptions(ApiProxy.RPCFailedException.class, MemcacheServiceException.class)
             .build();
+    protected Function<T, T> preSaveHook = new Function<T, T>() {
+        @Nullable
+        @Override
+        public T apply(@Nullable T t) {
+            return t;
+        }
+    };
 
     /**
      * The factory must be injected by the implementing class
      */
-    public AbstractStringKeyedDao(Class<T> clazz, Boolean useLowerCase) {
-        this.clazz = clazz;
-        Reader.convertToLowerCase = useLowerCase;
-    }
-
     public AbstractStringKeyedDao(Class<T> clazz) {
         this.clazz = clazz;
     }
@@ -78,16 +82,19 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
      */
     @Override
     public <R extends T> Key<R> save(final R entity) {
-        return retryHandler.executeRuntime(new Callable<Key<R>>() {
-            @Override
-            public Key<R> call() throws Exception {
-                R value = KeyGenerator.key(entity);
-                Key<R> savedKey = null;
-                savedKey = ofy().save().entity(entity).now();
-
-                return savedKey;
-            }
-        });
+        beforeOperation();
+        try {
+            return retryHandler.executeRuntime(new Callable<Key<R>>() {
+                @Override
+                public Key<R> call() throws Exception {
+                    R value = KeyGenerator.key(entity);
+                    value = (R) preSaveHook.apply(value);
+                    return  ofy().save().entity(value).now();
+                }
+            });
+        } finally {
+            afterOperation();
+        }
     }
 
     /**
@@ -98,13 +105,19 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
      */
     @Override
     public <R extends T> Map<Key<R>, R> saveAll(final Iterable<R> entities) {
-        return retryHandler.executeRuntime(new Callable<Map<Key<R>, R>>() {
-            @Override
-            public Map<Key<R>, R> call() throws Exception {
-                Iterable<R> vals = (Iterable<R>) Iterables.transform(entities, KEY);
-                return ofy().save().entities(entities).now();
-            }
-        });
+        beforeOperation();
+        try{
+            return retryHandler.executeRuntime(new Callable<Map<Key<R>, R>>() {
+                @Override
+                public Map<Key<R>, R> call() throws Exception {
+                    Iterable<R> vals = (Iterable<R>) transform(entities, KEY);
+                    vals = (Iterable<R>) transform(vals, preSaveHook);
+                    return ofy().save().entities(vals).now();
+                }
+            });
+        } finally {
+            afterOperation();
+        }
     }
 
     /**
@@ -117,6 +130,7 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
      */
     @Override
     public T findById(final String id) throws NotFoundException {
+        beforeOperation();
         try {
             return this.retryHandler.execute(new Callable<T>() {
                     @Override
@@ -128,9 +142,9 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
             throw e;
         } catch(Exception e){
             throw new RuntimeException(e);
+        } finally {
+            afterOperation();
         }
-
-
     }
 
 
@@ -145,7 +159,12 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
      */
     @Override
     public LoadResult<T> findAsync(String id) throws EntityNotFoundException {
+       beforeOperation();
+       try {
         return ofy().load().key(Key.create(clazz, id));
+       } finally {
+           afterOperation();
+       }
     }
 
     /**
@@ -157,12 +176,17 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
      */
     @Override
     public Map<String, T> findByIds(final Iterable <String> ids) {
+        beforeOperation();
+        try {
         return this.retryHandler.executeRuntime(new Callable<Map<String, T>>() {
-            @Override
-            public Map<String, T> call() throws Exception {
-                return ofy().load().type(clazz).ids(ids);
-            }
-        });
+                @Override
+                public Map<String, T> call() throws Exception {
+                    return ofy().load().type(clazz).ids(ids);
+                }
+            });
+        } finally {
+            afterOperation();
+        }
     }
 
 
@@ -175,12 +199,17 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
      */
     @Override
     public Map<Key<T>, T> findByKeys(final Iterable<Key<T>> keys) {
-        return this.retryHandler.executeRuntime(new Callable<Map<Key<T>, T>>() {
-            @Override
-            public Map<Key<T>, T> call() throws Exception {
-                return ofy().load().keys(keys);
-            }
-        });
+        beforeOperation();
+        try {
+            return this.retryHandler.executeRuntime(new Callable<Map<Key<T>, T>>() {
+                @Override
+                public Map<Key<T>, T> call() throws Exception {
+                    return ofy().load().keys(keys);
+                }
+            });
+        } finally {
+            afterOperation();
+        }
     }
 
     /**
@@ -191,13 +220,18 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
      */
     @Override
     public void delete(final String id) {
-        this.retryHandler.executeRuntime(new Callable<Object>() {
-            @Override
-            public Object call() throws Exception {
-                ofy().delete().type(clazz).id(id).now();;
-                return Void.TYPE;
-            }
-        });
+        beforeOperation();
+        try {
+            this.retryHandler.executeRuntime(new Callable<Object>() {
+                @Override
+                public Object call() throws Exception {
+                    ofy().delete().type(clazz).id(id).now();;
+                    return Void.TYPE;
+                }
+            });
+        } finally {
+            afterOperation();
+        }
     }
 
     /**
@@ -207,14 +241,20 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
      * @param entities
      */
     @Override
-    public void deleteAll(Iterable<T> entities) {
-        final Iterable<T> finalEntities = Iterables.transform(entities, KEY);;
-        this.retryHandler.executeRuntime(new Callable<Object>() {
-            @Override
-            public Object call() throws Exception {
-                return ofy().delete().entities(finalEntities).now();
-            }
-        });
+    public void deleteAll(final Iterable<T> entities) {
+        beforeOperation();
+        try {
+            this.retryHandler.executeRuntime(new Callable<Object>() {
+                @Override
+                public Object call() throws Exception {
+                    Iterable<T> finalEntities = transform(entities, KEY);
+                    finalEntities = transform(finalEntities, preSaveHook);
+                    return ofy().delete().entities(finalEntities).now();
+                }
+            });
+        } finally {
+            afterOperation();
+        }
     }
 
     /**
@@ -224,44 +264,55 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
      * the keys to delete
      */
     @Override
-    public void deleteEntitiesByKeys(Iterable<String> stringKeys) {
-        ofy().delete().type(clazz).ids(stringKeys).now();
+    public void deleteEntitiesByKeys(Iterable <String> stringKeys) {
+        beforeOperation();
+        try {
+            ofy().delete().type(clazz).ids(stringKeys).now();
+        } finally {
+            afterOperation();
+        }
     }
 
     @Override
     public Integer getCount(int limit) {
-        Integer count = ofy().load().type(clazz).limit(limit).count();
-        if (count == limit) {
-            int pageSize = 1000;
-            Query query = ofy().load().type(clazz).limit(pageSize);
-            String cursor = null;
-            count = 0;
-            do {
-                if (Strings.isNullOrEmpty(cursor)) {
-                    query = query.startAt(Cursor.fromWebSafeString(cursor));
-                }
-                QueryResultIterator iterator = query.keys().iterator();
-                String newCursor = null;
-                int pageCount = 0;
-                while (iterator.hasNext()) {
-                    pageCount++;
-                    iterator.next();
-                }
-                count += pageCount;
-                if (pageCount == pageSize) {
-                    Cursor c = iterator.getCursor();
-                    if (c != null) {
-                        newCursor = c.toWebSafeString();
+        beforeOperation();
+        try {
+            Integer count = ofy().load().type(clazz).limit(limit).count();
+            if (count == limit) {
+                int pageSize = 1000;
+                Query query = ofy().load().type(clazz).limit(pageSize);
+                String cursor = null;
+                count = 0;
+                do {
+                    if (Strings.isNullOrEmpty(cursor)) {
+                        query = query.startAt(Cursor.fromWebSafeString(cursor));
                     }
-                }
-                if (newCursor != null && !newCursor.equals(cursor)) {
-                    cursor = newCursor;
-                } else {
-                    cursor = null;
-                }
-            } while (cursor != null);
+                    QueryResultIterator iterator = query.keys().iterator();
+                    String newCursor = null;
+                    int pageCount = 0;
+                    while (iterator.hasNext()) {
+                        pageCount++;
+                        iterator.next();
+                    }
+                    count += pageCount;
+                    if (pageCount == pageSize) {
+                        Cursor c = iterator.getCursor();
+                        if (c != null) {
+                            newCursor = c.toWebSafeString();
+                        }
+                    }
+                    if (newCursor != null && !newCursor.equals(cursor)) {
+                        cursor = newCursor;
+                    } else {
+                        cursor = null;
+                    }
+                } while (cursor != null);
+            }
+
+            return count;
+        } finally {
+            afterOperation();
         }
-        return count;
     }
 
 

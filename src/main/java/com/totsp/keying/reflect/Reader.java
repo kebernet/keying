@@ -27,7 +27,6 @@ import java.util.logging.Logger;
 public class Reader<T> {
     private static final Logger LOGGER = Logger.getLogger(Reader.class.getCanonicalName());
     private final Accessor<T> accessor;
-    public static Boolean convertToLowerCase = false;
 
     public Reader(Class<T> type, String name){
         Accessor<T> accessor = null;
@@ -77,18 +76,14 @@ public class Reader<T> {
         @Override
         public String read(T target) {
             try {
-                if(convertToLowerCase){
-                    return new StringBuilder().append(this.field.get(target)).toString().toLowerCase();
-                } else {
-                    return new StringBuilder().append(this.field.get(target)).toString();
-                }
+                return new StringBuilder().append(this.field.get(target)).toString();
             } catch (IllegalAccessException e) {
                 throw new KeyException("Failed to read from "+field.getName()+" on "+target, e);
             }
         }
     }
 
-    private static class PropertyAccessor<T> implements Accessor<T>{
+    private static class PropertyAccessor<T> implements Accessor<T> {
         private final PropertyDescriptor descriptor;
         private final Class<T> type;
 

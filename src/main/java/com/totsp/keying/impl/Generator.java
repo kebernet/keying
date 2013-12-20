@@ -24,10 +24,12 @@ public class Generator<T> {
 
     public final Component<T>[] components;
     private final Setter<T> setter;
+    private final boolean lowerCase;
 
-    public Generator(Component<T>[] components, Setter<T> setter) {
+    public Generator(Component<T>[] components, Setter<T> setter, boolean lowerCase) {
         this.components = components;
         this.setter = setter;
+        this.lowerCase = lowerCase;
     }
 
     public void key(T object){
@@ -45,6 +47,6 @@ public class Generator<T> {
             }
             sb = sb.append(components[i].getComponent(object));
         }
-        return sb.toString();
+        return lowerCase ? sb.toString().toLowerCase() : sb.toString();
     }
 }

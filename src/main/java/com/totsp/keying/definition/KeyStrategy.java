@@ -29,4 +29,5 @@ public @interface KeyStrategy {
     KeySegment[] value();
     String[] properties() default {};
     String separator() default ":";
+    boolean lowerCase() default false;
 }
