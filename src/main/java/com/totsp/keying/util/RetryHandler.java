@@ -24,6 +24,7 @@ import com.totsp.keying.util.interfaces.RetryBuilderTime;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
+import java.util.ArrayList;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -60,6 +61,7 @@ public class RetryHandler {
     private final Predicate<Exception> predicate;
     private final int maxTries;
     private final Builder.Strategy strategy;
+    private final ArrayList<RetryListener> listeners = new ArrayList<RetryListener>();
 
     RetryHandler(long time, TimeUnit unit, int maxTries, Builder.Strategy backoffStrategy,  Predicate<? extends Exception> predicate) {
         this.unit = unit;
@@ -99,6 +101,23 @@ public class RetryHandler {
         }
     }
 
+    /**
+     * Adds a retry listener.
+     * @param listener
+     */
+    public void addRetryListener(RetryListener listener){
+        this.listeners.add(listener);
+    }
+
+    /**
+     * Removes a retry listener
+     * @param listener
+     * @return the listener was present and removed.
+     */
+    public boolean removeRetryListener(RetryListener listener){
+        return this.listeners.remove(listener);
+    }
+
     private <T> T execute(int tryNumber, Callable<T> callable) throws Exception{
         LOGGER.finest(" executing try " + tryNumber);
         try {
@@ -106,7 +125,7 @@ public class RetryHandler {
         } catch(Exception e){
             LOGGER.log(Level.FINE, "Caught during "+callable.getClass().getCanonicalName(), e);
             if(tryNumber < maxTries && predicate.apply(e)){
-                sleepAttempt(tryNumber -1);
+                sleepAttempt(tryNumber -1, callable);
                 return execute(++tryNumber, callable);
             } else {
                 throw e;
@@ -114,11 +133,14 @@ public class RetryHandler {
         }
     }
 
-    private void sleepAttempt(int tryNumber) {
+    private void sleepAttempt(int tryNumber, Callable callable) {
         long realTime = this.strategy.compute(this.time, tryNumber);
         try {
             LOGGER.finest("Sleeping " + realTime + " " + unit);
             Thread.sleep(unit.toMillis(realTime));
+            for(RetryListener listener: listeners){
+                listener.onRetry(this, realTime, this.unit, callable);
+            }
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -237,7 +259,7 @@ public class RetryHandler {
             @Override
             public long compute(long base, int factor) {
                 long value = base;
-                for(int i=0; i < factor; i ++){
+                for(int i=0; i < factor; i++){
                     value *= base;
                 }
                 return value;
@@ -248,7 +270,7 @@ public class RetryHandler {
          * Does not increase the delay between subsequent calls at all
          * 5 seconds, 5 seconds, 5 seconds, etc.
          */
-        public static final Strategy FIXED  = new Strategy() {
+        public static final Strategy FIXED = new Strategy() {
             @Override
             public long compute(long base, int factor) {
                 return base;
@@ -265,12 +287,32 @@ public class RetryHandler {
         }
 
 
+        /**
+         * A strategy for mutating the base time value based on a step.
+         */
         public static interface Strategy {
+            /** computes the next execution time.
+             *
+             * @param base The base time value.
+             * @param step The 0-index step the strategy is on.
+             * @return the new time value.
+             */
             long compute(long base, int step);
         }
     }
 
-
-
+    /**
+     * A listener interface that gets notified when a retry happends.
+     */
+    public static interface RetryListener {
+        /**
+         * Called just before an operation is retried.
+         * @param source Source RetryHandler.
+         * @param delayed the time delayed
+         * @param timeUnit units the time is in.
+         * @param callable callable that is about to be executed again.
+         */
+        void onRetry(RetryHandler source, long delayed, TimeUnit timeUnit, Callable callable);
+    }
 
 }

@@ -22,6 +22,8 @@ import com.googlecode.objectify.annotation.Unindex;
 import com.totsp.keying.definition.KeySegment;
 import com.totsp.keying.definition.KeyStrategy;
 
+import java.io.Serializable;
+
 /**
  * Created with IntelliJ IDEA.
  * User: Robert
@@ -31,7 +33,7 @@ import com.totsp.keying.definition.KeyStrategy;
  */
 @Entity
 @Unindex
-public class TestEntity {
+public class TestEntity implements Serializable {
 
     @Id
     private String id;

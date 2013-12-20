@@ -18,12 +18,14 @@ package com.totsp.keying.dao;
 import com.google.appengine.tools.development.testing.LocalDatastoreServiceTestConfig;
 import com.google.appengine.tools.development.testing.LocalServiceTestHelper;
 import com.google.common.base.Function;
+import com.googlecode.objectify.Key;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
+import java.util.Map;
 
 import static com.google.common.collect.Iterables.addAll;
 import static com.google.common.collect.Iterables.transform;
@@ -59,20 +61,25 @@ public class AbstractStringKeyedDaoTest {
         TestEntity entity = new TestEntity();
         entity.setName("testSave");
         instance.save(entity);
+        checkBeforeAndAfter(instance);
+        instance.reset();
         assertNotNull(entity.getId());
         TestEntity fetched = instance.findById(entity.getId());
         assertEquals(entity, fetched);
+        checkBeforeAndAfter(instance);
     }
 
     @Test
-    public void testSaveAllAndFindByIdsSymmtric() throws Exception {
+    public void testSaveAllAndFindByIdsSymmetric() throws Exception {
         ArrayList<TestEntity> test = new ArrayList<TestEntity>(100);
         for(int i=0; i < 100; i++){
             TestEntity e = new TestEntity();
             e.setName("Test "+i);
             test.add(e);
         }
-        new TestEntityDao().saveAll(test);
+        TestEntityDao dao = new TestEntityDao();
+        dao.saveAll(test);
+        checkBeforeAndAfter(dao);
         Iterable<String> ids = transform(test, new Function<TestEntity, String>(){
 
             @Nullable
@@ -82,8 +89,10 @@ public class AbstractStringKeyedDaoTest {
             }
         });
         ArrayList<TestEntity> results = new ArrayList<TestEntity>(100);
-        addAll(results, new TestEntityDao().findByIds(ids).values());
+        TestEntityDao dao2 =  new TestEntityDao();
+        addAll(results, dao2.findByIds(ids).values());
         assertEquals(test, results);
+        checkBeforeAndAfter(dao2);
 
     }
 
@@ -93,8 +102,24 @@ public class AbstractStringKeyedDaoTest {
     }
 
 
-    public void testFindByKeys() throws Exception {
-
+    @Test
+    public void testFindByKeysAndSaveAllSymmetric() throws Exception {
+        ArrayList<TestEntity> test = new ArrayList<TestEntity>(100);
+        for(int i=0; i < 100; i++){
+            TestEntity e = new TestEntity();
+            e.setName("Test "+i);
+            test.add(e);
+        }
+        TestEntityDao dao = new TestEntityDao();
+        Map<Key<TestEntity>, TestEntity> results = dao.saveAll(test);
+        checkBeforeAndAfter(dao);
+        dao.reset();
+        ArrayList<TestEntity> initialResults = new ArrayList<TestEntity>(results.values());
+        assertEquals(test, initialResults);
+        ArrayList<TestEntity> found = new ArrayList<TestEntity>(dao.findByKeys(results.keySet()).values());
+        checkBeforeAndAfter(dao);
+        dao.reset();
+        assertEquals(test, found);
     }
 
     public void testDelete() throws Exception {
@@ -136,6 +161,11 @@ public class AbstractStringKeyedDaoTest {
         @Override
         protected void afterOperation() {
             this.afterCalled = true;
+        }
+
+        public void reset(){
+            this.beforeCalled = false;
+            this.afterCalled = false;
         }
     }
 }

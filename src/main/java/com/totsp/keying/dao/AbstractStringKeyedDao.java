@@ -15,26 +15,15 @@
  */
 package com.totsp.keying.dao;
 
-import com.google.appengine.api.datastore.Cursor;
 import com.google.appengine.api.datastore.EntityNotFoundException;
-import com.google.appengine.api.datastore.QueryResultIterator;
-import com.google.appengine.api.memcache.MemcacheServiceException;
-import com.google.apphosting.api.ApiProxy;
 import com.google.common.base.Function;
-import com.google.common.base.Strings;
 import com.googlecode.objectify.Key;
 import com.googlecode.objectify.LoadResult;
 import com.googlecode.objectify.NotFoundException;
-import com.googlecode.objectify.Objectify;
-import com.googlecode.objectify.cmd.Query;
-import com.totsp.keying.util.RetryHandler;
 
-import javax.annotation.Nullable;
+import java.io.Serializable;
 import java.util.Map;
 import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import static com.google.common.collect.Iterables.transform;
 
@@ -42,36 +31,47 @@ import static com.google.common.collect.Iterables.transform;
 /**
  * An abstract DAO class you can extend to work with keyed classes.
  */
-public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
+public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeyedDao<T, String> implements StringKeyedDao<T> {
     private final Function<T, T> KEY = new Function<T, T>() {
         @Override
         public T apply(@javax.annotation.Nullable T t) {
             return KeyGenerator.key(t);
         }
     };
-    private final Class<T> clazz;
-    private static int ERROR_TRY_NUM = 3;
-    private static final int ERROR_BACKOFF_MILLIS = 250;
-    private Logger logger = Logger.getLogger(this.getClass().getName());
-    protected RetryHandler retryHandler = RetryHandler.Builder
-            .retryTimes(ERROR_TRY_NUM)
-            .every(ERROR_BACKOFF_MILLIS, TimeUnit.MILLISECONDS)
-            .withBackoffStrategy(RetryHandler.Builder.EXPONENTIAL)
-            .forExceptions(ApiProxy.RPCFailedException.class, MemcacheServiceException.class)
-            .build();
-    protected Function<T, T> preSaveHook = new Function<T, T>() {
-        @Nullable
-        @Override
-        public T apply(@Nullable T t) {
-            return t;
-        }
-    };
+
 
     /**
      * The factory must be injected by the implementing class
      */
     public AbstractStringKeyedDao(Class<T> clazz) {
-        this.clazz = clazz;
+        super(clazz);
+    }
+
+    /**
+     * get object of type clazz that is stored in the datastore under the param id clazz must be of a type registered
+     * with the injected objectify factory
+     *
+     * @param id
+     * @return the object of type clazz that matches on the id
+     * @throws EntityNotFoundException thrown if no entity object could be found
+     */
+    @Override
+    public T findById(final String id) throws NotFoundException {
+        beforeOperation();
+        try {
+            return this.retryHandler.execute(new Callable<T>() {
+                @Override
+                public T call() throws Exception {
+                    return preReturnHook.apply(ofy().load().key(Key.create(clazz, id)).safeGet());
+                }
+            });
+        } catch(NotFoundException e){
+            throw e;
+        } catch(Exception e){
+            throw new RuntimeException(e);
+        } finally {
+            afterOperation();
+        }
     }
 
     /**
@@ -120,32 +120,6 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
         }
     }
 
-    /**
-     * get object of type clazz that is stored in the datastore under the param id clazz must be of a type registered
-     * with the injected objectify factory
-     *
-     * @param id
-     * @return the object of type clazz that matches on the id
-     * @throws EntityNotFoundException thrown if no entity object could be found
-     */
-    @Override
-    public T findById(final String id) throws NotFoundException {
-        beforeOperation();
-        try {
-            return this.retryHandler.execute(new Callable<T>() {
-                    @Override
-                    public T call() throws Exception {
-                        return ofy().load().key(Key.create(clazz, id)).safeGet();
-                    }
-                });
-        } catch(NotFoundException e){
-            throw e;
-        } catch(Exception e){
-            throw new RuntimeException(e);
-        } finally {
-            afterOperation();
-        }
-    }
 
 
     /**
@@ -181,7 +155,9 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
         return this.retryHandler.executeRuntime(new Callable<Map<String, T>>() {
                 @Override
                 public Map<String, T> call() throws Exception {
-                    return ofy().load().type(clazz).ids(ids);
+                    Map<String, T> result =  ofy().load().type(clazz).ids(ids);
+                    applyPreReturnHook((Iterable<T>) result.values());
+                    return result;
                 }
             });
         } finally {
@@ -198,13 +174,15 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
      *         datastore.
      */
     @Override
-    public Map<Key<T>, T> findByKeys(final Iterable<Key<T>> keys) {
+    public <R extends T> Map<Key<R>, R> findByKeys(final Iterable<Key<R>> keys) {
         beforeOperation();
         try {
-            return this.retryHandler.executeRuntime(new Callable<Map<Key<T>, T>>() {
+            return this.retryHandler.executeRuntime(new Callable<Map<Key<R>, R>>() {
                 @Override
-                public Map<Key<T>, T> call() throws Exception {
-                    return ofy().load().keys(keys);
+                public Map<Key<R>, R> call() throws Exception {
+                    Map<Key<R>, R> result = ofy().load().keys(keys);
+                    applyPreReturnHook((Iterable<T>) result.values());
+                    return result;
                 }
             });
         } finally {
@@ -272,69 +250,4 @@ public class AbstractStringKeyedDao<T> implements StringKeyedDao<T> {
             afterOperation();
         }
     }
-
-    @Override
-    public Integer getCount(int limit) {
-        beforeOperation();
-        try {
-            Integer count = ofy().load().type(clazz).limit(limit).count();
-            if (count == limit) {
-                int pageSize = 1000;
-                Query query = ofy().load().type(clazz).limit(pageSize);
-                String cursor = null;
-                count = 0;
-                do {
-                    if (Strings.isNullOrEmpty(cursor)) {
-                        query = query.startAt(Cursor.fromWebSafeString(cursor));
-                    }
-                    QueryResultIterator iterator = query.keys().iterator();
-                    String newCursor = null;
-                    int pageCount = 0;
-                    while (iterator.hasNext()) {
-                        pageCount++;
-                        iterator.next();
-                    }
-                    count += pageCount;
-                    if (pageCount == pageSize) {
-                        Cursor c = iterator.getCursor();
-                        if (c != null) {
-                            newCursor = c.toWebSafeString();
-                        }
-                    }
-                    if (newCursor != null && !newCursor.equals(cursor)) {
-                        cursor = newCursor;
-                    } else {
-                        cursor = null;
-                    }
-                } while (cursor != null);
-            }
-
-            return count;
-        } finally {
-            afterOperation();
-        }
-    }
-
-
-    protected void beforeOperation() {
-
-    }
-
-    protected void afterOperation() {
-
-    }
-
-    protected Objectify ofy() {
-        return OfyService.ofy();
-    }
-
-    protected void sleep(int timeInMillSec) {
-        try {
-            Thread.sleep(timeInMillSec);
-        } catch (InterruptedException e) {
-            logger.log(Level.WARNING, "Thread was interrupted in UserAppsScanTask.");
-        }
-    }
-
-
 }

@@ -15,8 +15,10 @@
  */
 package com.totsp.keying.dao;
 
+import java.io.Serializable;
+
 /**
  *
  */
-public interface StringKeyedDao<T> extends KeyedDao<T, String> {
+public interface StringKeyedDao<T extends Serializable> extends KeyedDao<T, String> {
 }

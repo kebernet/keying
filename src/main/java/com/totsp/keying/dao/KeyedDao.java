@@ -25,34 +25,8 @@ import java.util.Map;
 /**
  *
  */
-public interface KeyedDao<T, K extends Serializable> extends Dao<T> {
+public interface KeyedDao<T extends Serializable, K extends Serializable> extends Dao<T, K> {
     public static final char LAST_UNICODE_CHARACTER = '\ufffd';
-
-    /**
-     * save or update entity in datastore entity must be of a type registered with the injected objectify factory
-     *
-     * @param entity must not be null
-     * @return the Key of the saved object
-     */
-    <R extends T> Key<R> save(R entity);
-
-    /**
-     * save or update entities in datastore entities must be of a type registered with the injected objectify factory
-     *
-     * @param entities
-     * @return a map of the saved entities mapped to their datastore keys
-     */
-    <R extends T> Map<Key<R>, R> saveAll(final Iterable<R> entities);
-
-    /**
-     * get object of type clazz that is stored in the datastore under the param id clazz must be of a type registered
-     * with the injected objectify factory
-     *
-     * @param id
-     * @return the object of type clazz that matches on the id
-     * @throws EntityNotFoundException thrown if no entity object could be found
-     */
-    public T findById(K id) throws EntityNotFoundException;
 
     /**
      * get object of type clazz that is stored in the datastore under the param id clazz must be of a type registered
@@ -66,37 +40,13 @@ public interface KeyedDao<T, K extends Serializable> extends Dao<T> {
     public LoadResult<T> findAsync(K id) throws EntityNotFoundException;
 
     /**
-     * get entities from datastore that match against the passed in collection of ids
-     *
-     * @param ids the set of String or Long ids matching against those entities to be retrieved from the datastore
-     * @return all entities that match on the collection of ids. no error is thrown for entities not found in datastore.
-     */
-    public Map<String, T> findByIds(Iterable<K> ids);
-
-    /**
      * get entities from datastore that match against the passed in collection of keys
      *
      * @param keys the set of keys matching against those entities to be retrieved from the datastore
      * @return all entities that match on the collection of keys. no error is thrown for entities not found in
      *         datastore.
      */
-    public Map<Key<T>, T> findByKeys(Iterable<Key<T>> keys);
-
-    /**
-     * delete object of type clazz that is stored in the datastore under the param id clazz must be of a type registered
-     * with the injected objectify factory
-     *
-     * @param id
-     */
-    public void delete(K id);
-
-    /**
-     * delete entities from datastore that match against the passed in collection entities must be of a type registered
-     * with the injected objectify factory
-     *
-     * @param entities
-     */
-    public void deleteAll(Iterable<T> entities);
+    public <R extends T> Map<Key<R>, R> findByKeys(Iterable<Key<R>> keys);
 
     /**
      * delete entities from datastore that match against the passed in collection keys must be of a type string with the
@@ -107,11 +57,6 @@ public interface KeyedDao<T, K extends Serializable> extends Dao<T> {
     public void deleteEntitiesByKeys(Iterable<K> keys);
 
 
-    /**
-     * Returns count of entities of T
-     *
-     * @return
-     */
-    Integer getCount(int limit);
+
 
 }

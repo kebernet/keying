@@ -71,7 +71,7 @@ public class RetryHandlerTest {
                 .withBackoffStrategy(RetryHandler.Builder.LINEAR)
                 .forExceptions(IOException.class)
                 .build();
-
+        handler.addRetryListener(new TestRetryListener());
         TestCallable callable = new TestCallable(1, IOException.class);
 
         assertEquals("Done.", handler.execute(callable));
@@ -88,7 +88,7 @@ public class RetryHandlerTest {
                 .build();
 
         TestCallable callable = new TestCallable(3, IOException.class);
-
+        handler.addRetryListener(new TestRetryListener(500, 1000));
         assertEquals("Done.", handler.execute(callable));
         assertEquals(3, callable.called);
 
@@ -105,6 +105,7 @@ public class RetryHandlerTest {
                 .build();
 
         TestCallable callable = new TestCallable(5, IOException.class);
+        handler.addRetryListener(new TestRetryListener(500, 1000, 1500));
         handler.execute(callable);
         fail();
     }
@@ -119,6 +120,7 @@ public class RetryHandlerTest {
                 .build();
 
         TestCallable callable = new TestCallable(5, SocketTimeoutException.class);
+        handler.addRetryListener(new TestRetryListener(500, 1000, 1500));
         handler.execute(callable);
         fail();
     }
@@ -133,6 +135,7 @@ public class RetryHandlerTest {
                 .build();
 
         TestCallable callable = new TestCallable(5, NullPointerException.class);
+        handler.addRetryListener(new TestRetryListener(500, 1000, 1500));
         handler.execute(callable);
         fail();
     }
@@ -157,6 +160,20 @@ public class RetryHandlerTest {
             } else {
                 throw throwThis.newInstance();
             }
+        }
+    }
+
+    private class TestRetryListener implements RetryHandler.RetryListener {
+        private final long[] expectedTimes;
+        int retry = 0;
+
+        private TestRetryListener(long... expectedTimes) {
+            this.expectedTimes = expectedTimes;
+        }
+
+        @Override
+        public void onRetry(RetryHandler source, long delayed, TimeUnit timeUnit, Callable callable) {
+            assertEquals(expectedTimes[retry++], delayed);
         }
     }
 }
