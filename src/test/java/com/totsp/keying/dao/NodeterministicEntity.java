@@ -33,7 +33,7 @@ import java.io.Serializable;
  */
 @Entity
 @Unindex
-public class TestEntity implements Serializable {
+public class NodeterministicEntity implements Serializable {
 
     @Id
     private String id;
@@ -62,7 +62,7 @@ public class TestEntity implements Serializable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        TestEntity that = (TestEntity) o;
+        NodeterministicEntity that = (NodeterministicEntity) o;
 
         return Objects.equal(this.id, that.id) &&
                 Objects.equal(this.name, that.name);

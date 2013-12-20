@@ -45,7 +45,7 @@ public class AbstractStringKeyedDaoTest {
 
     @Before
     public void setUp(){
-        OfyService.factory().register(TestEntity.class);
+        OfyService.factory().register(NodeterministicEntity.class);
         HELPER.setUp();
 
     }
@@ -58,37 +58,37 @@ public class AbstractStringKeyedDaoTest {
     @Test
     public void testSaveAndIdSymmetric() throws Exception {
         TestEntityDao instance = new TestEntityDao();
-        TestEntity entity = new TestEntity();
+        NodeterministicEntity entity = new NodeterministicEntity();
         entity.setName("testSave");
         instance.save(entity);
         checkBeforeAndAfter(instance);
         instance.reset();
         assertNotNull(entity.getId());
-        TestEntity fetched = instance.findById(entity.getId());
+        NodeterministicEntity fetched = instance.findById(entity.getId());
         assertEquals(entity, fetched);
         checkBeforeAndAfter(instance);
     }
 
     @Test
     public void testSaveAllAndFindByIdsSymmetric() throws Exception {
-        ArrayList<TestEntity> test = new ArrayList<TestEntity>(100);
+        ArrayList<NodeterministicEntity> test = new ArrayList<NodeterministicEntity>(100);
         for(int i=0; i < 100; i++){
-            TestEntity e = new TestEntity();
+            NodeterministicEntity e = new NodeterministicEntity();
             e.setName("Test "+i);
             test.add(e);
         }
         TestEntityDao dao = new TestEntityDao();
         dao.saveAll(test);
         checkBeforeAndAfter(dao);
-        Iterable<String> ids = transform(test, new Function<TestEntity, String>(){
+        Iterable<String> ids = transform(test, new Function<NodeterministicEntity, String>(){
 
             @Nullable
             @Override
-            public String apply(@Nullable TestEntity testEntity) {
+            public String apply(@Nullable NodeterministicEntity testEntity) {
                 return testEntity.getId();
             }
         });
-        ArrayList<TestEntity> results = new ArrayList<TestEntity>(100);
+        ArrayList<NodeterministicEntity> results = new ArrayList<NodeterministicEntity>(100);
         TestEntityDao dao2 =  new TestEntityDao();
         addAll(results, dao2.findByIds(ids).values());
         assertEquals(test, results);
@@ -104,19 +104,19 @@ public class AbstractStringKeyedDaoTest {
 
     @Test
     public void testFindByKeysAndSaveAllSymmetric() throws Exception {
-        ArrayList<TestEntity> test = new ArrayList<TestEntity>(100);
+        ArrayList<NodeterministicEntity> test = new ArrayList<NodeterministicEntity>(100);
         for(int i=0; i < 100; i++){
-            TestEntity e = new TestEntity();
+            NodeterministicEntity e = new NodeterministicEntity();
             e.setName("Test "+i);
             test.add(e);
         }
         TestEntityDao dao = new TestEntityDao();
-        Map<Key<TestEntity>, TestEntity> results = dao.saveAll(test);
+        Map<Key<NodeterministicEntity>, NodeterministicEntity> results = dao.saveAll(test);
         checkBeforeAndAfter(dao);
         dao.reset();
-        ArrayList<TestEntity> initialResults = new ArrayList<TestEntity>(results.values());
+        ArrayList<NodeterministicEntity> initialResults = new ArrayList<NodeterministicEntity>(results.values());
         assertEquals(test, initialResults);
-        ArrayList<TestEntity> found = new ArrayList<TestEntity>(dao.findByKeys(results.keySet()).values());
+        ArrayList<NodeterministicEntity> found = new ArrayList<NodeterministicEntity>(dao.findByKeys(results.keySet()).values());
         checkBeforeAndAfter(dao);
         dao.reset();
         assertEquals(test, found);
@@ -146,11 +146,11 @@ public class AbstractStringKeyedDaoTest {
 
 
 
-    static class TestEntityDao extends AbstractStringKeyedDao<TestEntity> {
+    static class TestEntityDao extends AbstractStringKeyedDao<NodeterministicEntity> {
         private boolean beforeCalled;
         private boolean afterCalled;
         public TestEntityDao() {
-            super(TestEntity.class);
+            super(NodeterministicEntity.class);
         }
 
         @Override

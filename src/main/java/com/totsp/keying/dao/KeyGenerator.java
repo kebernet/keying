@@ -18,7 +18,6 @@ package com.totsp.keying.dao;
 import com.totsp.keying.definition.KeySegment;
 import com.totsp.keying.impl.Component;
 import com.totsp.keying.impl.Generator;
-import com.totsp.keying.impl.NonDeterministicComponent;
 import com.totsp.keying.impl.PropertyComponent;
 import com.totsp.keying.impl.TimeComponent;
 import com.totsp.keying.impl.UUIDComponent;
@@ -90,13 +89,23 @@ public class KeyGenerator {
         return o;
     }
 
+    public static <T> boolean hasKey(T o){
+        Generator<T> gen = get(o);
+        return gen.keyed(o) || gen.isDeterministic();
+    }
+
+    public static <T> boolean haveKeys(Iterable<T> values){
+        for(T t: values){
+            if(!hasKey(t)){
+                return false;
+            }
+        }
+        return true;
+    }
+
     public static <T> String compute(T o){
        Generator<T> generator = get(o);
-       for(Component<T> component: generator.components){
-           if(component instanceof NonDeterministicComponent){
-            throw new KeyException(component.getClass().getCanonicalName() +" isn't a deterministic component.");
-           }
-       }
+       generator.checkDeterministic();
        return generator.compute(o);
     }
 }

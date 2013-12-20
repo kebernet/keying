@@ -15,6 +15,7 @@
  */
 package com.totsp.keying.impl;
 
+import com.totsp.keying.reflect.KeyException;
 import com.totsp.keying.reflect.Setter;
 
 /**
@@ -48,5 +49,22 @@ public class Generator<T> {
             sb = sb.append(components[i].getComponent(object));
         }
         return lowerCase ? sb.toString().toLowerCase() : sb.toString();
+    }
+
+    public void checkDeterministic(){
+        for(Component<T> component: components){
+            if(component instanceof NonDeterministicComponent){
+                throw new KeyException(component.getClass().getCanonicalName() +" isn't a deterministic component.");
+            }
+        }
+    }
+
+    public boolean isDeterministic(){
+        for(Component<T> component: components){
+            if(component instanceof NonDeterministicComponent){
+               return false;
+            }
+        }
+        return true;
     }
 }

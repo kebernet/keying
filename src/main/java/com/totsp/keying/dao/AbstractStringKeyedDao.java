@@ -84,17 +84,27 @@ public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeye
     public <R extends T> Key<R> save(final R entity) {
         beforeOperation();
         try {
-            return retryHandler.executeRuntime(new Callable<Key<R>>() {
-                @Override
-                public Key<R> call() throws Exception {
-                    R value = KeyGenerator.key(entity);
-                    value = (R) preSaveHook.apply(value);
-                    return  ofy().save().entity(value).now();
-                }
-            });
+            //Only retry saves if the entity has a key or the key is
+            //deterministic to try and avoid dupes.
+            if(KeyGenerator.hasKey(entity)){
+                return retryHandler.executeRuntime(new Callable<Key<R>>() {
+                    @Override
+                    public Key<R> call() throws Exception {
+                        return saveImpl(entity);
+                    }
+                });
+            } else {
+                return saveImpl(entity);
+            }
         } finally {
             afterOperation();
         }
+    }
+
+    private <R extends T> Key<R> saveImpl(R entity){
+        R value = KeyGenerator.key(entity);
+        value = (R) preSaveHook.apply(value);
+        return  ofy().save().entity(value).now();
     }
 
     /**
@@ -107,17 +117,27 @@ public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeye
     public <R extends T> Map<Key<R>, R> saveAll(final Iterable<R> entities) {
         beforeOperation();
         try{
-            return retryHandler.executeRuntime(new Callable<Map<Key<R>, R>>() {
-                @Override
-                public Map<Key<R>, R> call() throws Exception {
-                    Iterable<R> vals = (Iterable<R>) transform(entities, KEY);
-                    vals = (Iterable<R>) transform(vals, preSaveHook);
-                    return ofy().save().entities(vals).now();
-                }
-            });
+            //Only retry saves if the entity has a key or the key is
+            //deterministic to try and avoid dupes.
+            if(KeyGenerator.haveKeys(entities)){
+                return retryHandler.executeRuntime(new Callable<Map<Key<R>, R>>() {
+                    @Override
+                    public Map<Key<R>, R> call() throws Exception {
+                        return saveAllImpl(entities);
+                    }
+                });
+            } else {
+                return saveAllImpl(entities);
+            }
         } finally {
             afterOperation();
         }
+    }
+
+    private <R extends T> Map<Key<R>, R> saveAllImpl(final Iterable<R> entities){
+        Iterable<R> vals = (Iterable<R>) transform(entities, KEY);
+        vals = (Iterable<R>) transform(vals, preSaveHook);
+        return ofy().save().entities(vals).now();
     }
 
 

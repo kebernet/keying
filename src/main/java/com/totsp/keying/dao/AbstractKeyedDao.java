@@ -25,12 +25,14 @@ import com.googlecode.objectify.Objectify;
 import com.googlecode.objectify.cmd.Query;
 import com.totsp.keying.util.RetryHandler;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.Iterators.addAll;
 import static com.google.common.collect.Iterators.transform;
 
@@ -66,7 +68,9 @@ public abstract class AbstractKeyedDao<T extends Serializable, K extends Seriali
         }
     };
 
-    protected AbstractKeyedDao(Class<T> clazz) {
+    protected AbstractKeyedDao(@Nonnull Class<T> clazz) {
+        checkNotNull(clazz);
+        logger.fine("Create "+this.getClass().getCanonicalName()+" for "+clazz.getCanonicalName());
         this.clazz = clazz;
     }
 
