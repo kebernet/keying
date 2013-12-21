@@ -23,6 +23,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.util.Enumeration;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -36,7 +37,7 @@ public class OfyService {
             Enumeration<URL> enu = OfyService.class.getClassLoader().getResources("/ofy-classes");
             while(enu.hasMoreElements()){
                 URL url = enu.nextElement();
-                try(BufferedReader reader = new BufferedReader(new InputStreamReader(url.openStream())) ){
+                try(BufferedReader reader = new BufferedReader(new InputStreamReader(url.openStream(), Charset.forName("utf-8"))) ){
                     for(String line = reader.readLine(); line != null ; line = reader.readLine() ){
                         line = line.trim();
                         try{

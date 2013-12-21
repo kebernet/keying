@@ -18,7 +18,7 @@ package com.totsp.keying.dao;
 import java.io.Serializable;
 
 /**
- *
+ *  A base interface for DAOs for Stirng keyed entities.
  */
 public interface StringKeyedDao<T extends Serializable> extends KeyedDao<T, String> {
 }

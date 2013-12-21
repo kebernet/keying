@@ -17,10 +17,13 @@ package com.totsp.keying.reflect;
 
 import com.totsp.keying.definition.KeyStrategy;
 
+import javax.annotation.Nonnull;
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Field;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  *
@@ -29,22 +32,23 @@ public class Setter<T> {
     private final Mutator<T> mutator;
     public final KeyStrategy strategy;
 
-    public Setter(Class<T> type){
+    public Setter(@Nonnull Class<T> type){
+        checkNotNull(type);
         boolean found = false;
         Mutator<T> mutator = null;
         KeyStrategy strategy = null;
         for(Field field : type.getDeclaredFields()){
             if((strategy = field.getAnnotation(KeyStrategy.class)) != null){
                 found = true;
-                mutator = new FieldMutator<T>(field);
+                mutator = new FieldMutator<>(field);
                 break;
             }
         }
         if(!found){
             try {
                 for(PropertyDescriptor pd : Introspector.getBeanInfo(type).getPropertyDescriptors()){
-                    if(pd.getReadMethod() != null & (strategy = pd.getReadMethod().getAnnotation(KeyStrategy.class)) != null && pd.getWriteMethod() != null){
-                        mutator = new PropertyMutator<T>(pd);
+                    if(pd.getReadMethod() != null && (strategy = pd.getReadMethod().getAnnotation(KeyStrategy.class)) != null && pd.getWriteMethod() != null){
+                        mutator = new PropertyMutator<>(pd);
                         break;
                     } else if(pd.getWriteMethod() != null && (strategy = pd.getWriteMethod().getAnnotation(KeyStrategy.class)) != null){
                         strategy = pd.getWriteMethod().getAnnotation(KeyStrategy.class);
@@ -55,7 +59,7 @@ public class Setter<T> {
                 throw new KeyException("Unabled to introspect "+type.getCanonicalName(), e);
             }
         }
-        if(mutator == null || strategy == null){
+        if(strategy == null  || mutator == null){
             throw new KeyException("Failed to find a KeyStrategy annotation on "+type.getCanonicalName());
         }
         this.mutator = mutator;

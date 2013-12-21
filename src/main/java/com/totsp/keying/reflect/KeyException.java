@@ -16,11 +16,7 @@
 package com.totsp.keying.reflect;
 
 /**
- * Created with IntelliJ IDEA.
- * User: keber_000
- * Date: 8/29/13
- * Time: 8:23 PM
- * To change this template use File | Settings | File Templates.
+ * Exception thrown when there is a problem computing or setting a key for an entity.
  */
 public class KeyException  extends RuntimeException {
 

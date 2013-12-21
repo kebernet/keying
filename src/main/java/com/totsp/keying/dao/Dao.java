@@ -15,9 +15,10 @@
  */
 package com.totsp.keying.dao;
 
-import com.google.appengine.api.datastore.EntityNotFoundException;
 import com.googlecode.objectify.Key;
+import com.googlecode.objectify.NotFoundException;
 
+import javax.annotation.Nonnull;
 import java.io.Serializable;
 import java.util.Map;
 
@@ -25,31 +26,32 @@ import java.util.Map;
  * A base interface for a DAO.
  */
 public interface Dao<T extends Serializable, K extends Serializable> {
+
     /**
      * save or update entity in datastore entity must be of a type registered with the injected objectify factory
      *
      * @param entity must not be null
      * @return the Key of the saved object
      */
-    <R extends T> Key<R> save(R entity);
+    <R extends T> Key<R> save(@Nonnull R entity);
 
     /**
      * save or update entities in datastore entities must be of a type registered with the injected objectify factory
      *
-     * @param entities
+     * @param entities entities to save
      * @return a map of the saved entities mapped to their datastore keys
      */
-    <R extends T> Map<Key<R>, R> saveAll(final Iterable<R> entities);
+    <R extends T> Map<Key<R>, R> saveAll(@Nonnull Iterable<R> entities);
 
     /**
      * get object of type clazz that is stored in the datastore under the param id clazz must be of a type registered
      * with the injected objectify factory
      *
-     * @param id
+     * @param id Name/ID of the entity to find.
      * @return the object of type clazz that matches on the id
      * @throws com.google.appengine.api.datastore.EntityNotFoundException thrown if no entity object could be found
      */
-    public T findById(K id) throws EntityNotFoundException;
+    T findById(@Nonnull K id) throws NotFoundException;
 
     /**
      * get entities from datastore that match against the passed in collection of ids
@@ -57,13 +59,12 @@ public interface Dao<T extends Serializable, K extends Serializable> {
      * @param ids the set of String or Long ids matching against those entities to be retrieved from the datastore
      * @return all entities that match on the collection of ids. no error is thrown for entities not found in datastore.
      */
-    public Map<String, T> findByIds(Iterable<K> ids);
-
+    Map<String, T> findByIds(@Nonnull Iterable<K> ids);
 
     /**
      * Returns count of entities of T
      *
-     * @return
+     * @return count of entities.
      */
     Integer getCount(int limit);
 
@@ -71,16 +72,16 @@ public interface Dao<T extends Serializable, K extends Serializable> {
      * delete object of type clazz that is stored in the datastore under the param id clazz must be of a type registered
      * with the injected objectify factory
      *
-     * @param id
+     * @param id Name/ID of the entity to delete.
      */
-    public void delete(K id);
+    void delete(@Nonnull K id);
 
     /**
      * delete entities from datastore that match against the passed in collection entities must be of a type registered
      * with the injected objectify factory
      *
-     * @param entities
+     * @param entities entities to delete.
      */
-    public void deleteAll(Iterable<T> entities);
+    void deleteAll(@Nonnull Iterable<T> entities);
 
 }

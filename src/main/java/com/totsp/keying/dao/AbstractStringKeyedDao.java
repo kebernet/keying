@@ -15,16 +15,17 @@
  */
 package com.totsp.keying.dao;
 
-import com.google.appengine.api.datastore.EntityNotFoundException;
 import com.google.common.base.Function;
 import com.googlecode.objectify.Key;
 import com.googlecode.objectify.LoadResult;
 import com.googlecode.objectify.NotFoundException;
 
+import javax.annotation.Nonnull;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.Iterables.transform;
 
 
@@ -32,18 +33,11 @@ import static com.google.common.collect.Iterables.transform;
  * An abstract DAO class you can extend to work with keyed classes.
  */
 public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeyedDao<T, String> implements StringKeyedDao<T> {
-    private final Function<T, T> KEY = new Function<T, T>() {
-        @Override
-        public T apply(@javax.annotation.Nullable T t) {
-            return KeyGenerator.key(t);
-        }
-    };
-
 
     /**
      * The factory must be injected by the implementing class
      */
-    public AbstractStringKeyedDao(Class<T> clazz) {
+    public AbstractStringKeyedDao(@Nonnull Class<T> clazz) {
         super(clazz);
     }
 
@@ -51,18 +45,21 @@ public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeye
      * get object of type clazz that is stored in the datastore under the param id clazz must be of a type registered
      * with the injected objectify factory
      *
-     * @param id
+     * @param id Name/ID field to find.
      * @return the object of type clazz that matches on the id
-     * @throws EntityNotFoundException thrown if no entity object could be found
+     * @throws NotFoundException thrown if no entity object could be found
      */
     @Override
-    public T findById(final String id) throws NotFoundException {
+    public T findById(@Nonnull final String id) throws NotFoundException {
+        checkNotNull(id);
         beforeOperation();
         try {
             return this.retryHandler.execute(new Callable<T>() {
                 @Override
                 public T call() throws Exception {
-                    return preReturnHook.apply(ofy().load().key(Key.create(clazz, id)).safeGet());
+                    return preReturnHook.apply(
+                            ofy().load().key(Key.create(clazz, id)).now()
+                    );
                 }
             });
         } catch(NotFoundException e){
@@ -81,7 +78,8 @@ public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeye
      * @return the Key of the saved object
      */
     @Override
-    public <R extends T> Key<R> save(final R entity) {
+    public <R extends T> Key<R> save(@Nonnull final R entity) {
+        checkNotNull(entity);
         beforeOperation();
         try {
             //Only retry saves if the entity has a key or the key is
@@ -101,6 +99,7 @@ public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeye
         }
     }
 
+    @SuppressWarnings("unchecked")
     private <R extends T> Key<R> saveImpl(R entity){
         R value = KeyGenerator.key(entity);
         value = (R) preSaveHook.apply(value);
@@ -110,11 +109,12 @@ public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeye
     /**
      * save or update entities in datastore entities must be of a type registered with the injected objectify factory
      *
-     * @param entities
+     * @param entities Iterable of entities to save.
      * @return a map of the saved entities mapped to their datastore keys
      */
     @Override
-    public <R extends T> Map<Key<R>, R> saveAll(final Iterable<R> entities) {
+    public <R extends T> Map<Key<R>, R> saveAll(@Nonnull final Iterable<R> entities) {
+        checkNotNull(entities);
         beforeOperation();
         try{
             //Only retry saves if the entity has a key or the key is
@@ -134,10 +134,12 @@ public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeye
         }
     }
 
+    @SuppressWarnings("unchecked")
     private <R extends T> Map<Key<R>, R> saveAllImpl(final Iterable<R> entities){
-        Iterable<R> vals = (Iterable<R>) transform(entities, KEY);
-        vals = (Iterable<R>) transform(vals, preSaveHook);
-        return ofy().save().entities(vals).now();
+        @SuppressWarnings("unchecked")
+        Iterable<R> values = transform(entities, (Function<? super R,? extends R>) KeyGenerator.KEYING_FUNCTION);
+        values = (Iterable<R>) transform(values, preSaveHook);
+        return ofy().save().entities(values).now();
     }
 
 
@@ -146,13 +148,13 @@ public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeye
      * get object of type clazz that is stored in the datastore under the param id clazz must be of a type registered
      * with the injected objectify factory
      *
-     * @param id
+     * @param id Name/ID field of the entities to find.
      * @return the object of type clazz that matches on the id
-     * @throws EntityNotFoundException thrown if no entity object could be found
-     * @author Tomas de Priede
+     * @throws NotFoundException thrown if no entity object could be found
      */
     @Override
-    public LoadResult<T> findAsync(String id) throws EntityNotFoundException {
+    public LoadResult<T> findAsync(@Nonnull String id) {
+       checkNotNull(id);
        beforeOperation();
        try {
         return ofy().load().key(Key.create(clazz, id));
@@ -169,14 +171,15 @@ public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeye
      * @return all entities that match on the collection of ids. no error is thrown for entities not found in datastore.
      */
     @Override
-    public Map<String, T> findByIds(final Iterable <String> ids) {
+    public Map<String, T> findByIds(@Nonnull final Iterable <String> ids) {
+        checkNotNull(ids);
         beforeOperation();
         try {
         return this.retryHandler.executeRuntime(new Callable<Map<String, T>>() {
                 @Override
                 public Map<String, T> call() throws Exception {
                     Map<String, T> result =  ofy().load().type(clazz).ids(ids);
-                    applyPreReturnHook((Iterable<T>) result.values());
+                    applyPreReturnHook(result.values());
                     return result;
                 }
             });
@@ -194,7 +197,9 @@ public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeye
      *         datastore.
      */
     @Override
-    public <R extends T> Map<Key<R>, R> findByKeys(final Iterable<Key<R>> keys) {
+    @SuppressWarnings("unchecked")
+    public <R extends T> Map<Key<R>, R> findByKeys(@Nonnull final Iterable<Key<R>> keys) {
+        checkNotNull(keys);
         beforeOperation();
         try {
             return this.retryHandler.executeRuntime(new Callable<Map<Key<R>, R>>() {
@@ -214,16 +219,17 @@ public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeye
      * delete object of type clazz that is stored in the datastore under the param id clazz must be of a type registered
      * with the injected objectify factory
      *
-     * @param id
+     * @param id Name/ID of the entity to delete
      */
     @Override
-    public void delete(final String id) {
+    public void delete(@Nonnull final String id) {
+        checkNotNull(id);
         beforeOperation();
         try {
             this.retryHandler.executeRuntime(new Callable<Object>() {
                 @Override
                 public Object call() throws Exception {
-                    ofy().delete().type(clazz).id(id).now();;
+                    ofy().delete().type(clazz).id(id).now();
                     return Void.TYPE;
                 }
             });
@@ -236,16 +242,18 @@ public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeye
      * delete entities from datastore that match against the passed in collection entities must be of a type registered
      * with the injected objectify factory
      *
-     * @param entities
+     * @param entities Iterable of entities to delete.
      */
     @Override
-    public void deleteAll(final Iterable<T> entities) {
+    public void deleteAll(@Nonnull final Iterable<T> entities) {
+        checkNotNull(entities);
         beforeOperation();
         try {
             this.retryHandler.executeRuntime(new Callable<Object>() {
                 @Override
                 public Object call() throws Exception {
-                    Iterable<T> finalEntities = transform(entities, KEY);
+                    @SuppressWarnings("unchecked")
+                    Iterable<T> finalEntities = transform(entities, (Function<? super T,? extends T>) KeyGenerator.KEYING_FUNCTION);
                     finalEntities = transform(finalEntities, preSaveHook);
                     return ofy().delete().entities(finalEntities).now();
                 }
@@ -259,10 +267,11 @@ public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeye
      * delete entities from datastore that match against the passed in collection keys must be of a type string with the
      * injected objectify factory
      * <p/>
-     * the keys to delete
+     * @param stringKeys the keys to delete
      */
     @Override
-    public void deleteEntitiesByKeys(Iterable <String> stringKeys) {
+    public void deleteEntitiesByKeys(@Nonnull Iterable<String> stringKeys) {
+        checkNotNull(stringKeys);
         beforeOperation();
         try {
             ofy().delete().type(clazz).ids(stringKeys).now();

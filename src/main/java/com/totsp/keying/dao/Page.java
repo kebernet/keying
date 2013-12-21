@@ -19,6 +19,7 @@ import com.google.common.base.Objects;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A simple container for a page of datastore results.
@@ -34,16 +35,16 @@ public class Page<T extends Serializable> implements Serializable{
 
     /** The results of the query.
      *
-     * @return
+     * @return the list of result entities.
      */
-    public ArrayList<T> getResults() {
+    public List<T> getResults() {
         return results;
     }
 
     /**
      * The cursor to the next page of results, or null if this is the
      * final page.
-     * @return
+     * @return the cursor to the next batch or null.
      */
     public String getCursor() {
         return cursor;

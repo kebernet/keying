@@ -19,6 +19,7 @@ import com.google.appengine.api.datastore.EntityNotFoundException;
 import com.googlecode.objectify.Key;
 import com.googlecode.objectify.LoadResult;
 
+import javax.annotation.Nonnull;
 import java.io.Serializable;
 import java.util.Map;
 
@@ -32,12 +33,12 @@ public interface KeyedDao<T extends Serializable, K extends Serializable> extend
      * get object of type clazz that is stored in the datastore under the param id clazz must be of a type registered
      * with the injected objectify factory
      *
-     * @param id
+     * @param id ID/Name of the entity to find.
      * @return the object of type clazz that matches on the id
      * @throws EntityNotFoundException thrown if no entity object could be found
      * @author Tomas de Priede
      */
-    public LoadResult<T> findAsync(K id) throws EntityNotFoundException;
+    public LoadResult<T> findAsync(@Nonnull K id) throws EntityNotFoundException;
 
     /**
      * get entities from datastore that match against the passed in collection of keys
@@ -46,7 +47,7 @@ public interface KeyedDao<T extends Serializable, K extends Serializable> extend
      * @return all entities that match on the collection of keys. no error is thrown for entities not found in
      *         datastore.
      */
-    public <R extends T> Map<Key<R>, R> findByKeys(Iterable<Key<R>> keys);
+    public <R extends T> Map<Key<R>, R> findByKeys(@Nonnull Iterable<Key<R>> keys);
 
     /**
      * delete entities from datastore that match against the passed in collection keys must be of a type string with the
@@ -54,7 +55,7 @@ public interface KeyedDao<T extends Serializable, K extends Serializable> extend
      *
      * @param keys the keys to delete
      */
-    public void deleteEntitiesByKeys(Iterable<K> keys);
+    public void deleteEntitiesByKeys(@Nonnull Iterable<K> keys);
 
 
 

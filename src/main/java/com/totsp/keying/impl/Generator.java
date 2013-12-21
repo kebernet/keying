@@ -18,6 +18,8 @@ package com.totsp.keying.impl;
 import com.totsp.keying.reflect.KeyException;
 import com.totsp.keying.reflect.Setter;
 
+import java.util.Arrays;
+
 /**
  *
  */
@@ -28,7 +30,7 @@ public class Generator<T> {
     private final boolean lowerCase;
 
     public Generator(Component<T>[] components, Setter<T> setter, boolean lowerCase) {
-        this.components = components;
+        this.components = Arrays.copyOf(components, components.length);
         this.setter = setter;
         this.lowerCase = lowerCase;
     }
