@@ -41,7 +41,7 @@ public interface Dao<T extends Serializable, K extends Serializable> {
      * @param entities entities to save
      * @return a map of the saved entities mapped to their datastore keys
      */
-    <R extends T> Map<Key<R>, R> saveAll(@Nonnull Iterable<R> entities);
+    <R extends T> Map<Key<R>, R> save(@Nonnull Iterable<R> entities);
 
     /**
      * get object of type clazz that is stored in the datastore under the param id clazz must be of a type registered

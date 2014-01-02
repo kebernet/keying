@@ -113,7 +113,7 @@ public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeye
      * @return a map of the saved entities mapped to their datastore keys
      */
     @Override
-    public <R extends T> Map<Key<R>, R> saveAll(@Nonnull final Iterable<R> entities) {
+    public <R extends T> Map<Key<R>, R> save(@Nonnull final Iterable<R> entities) {
         checkNotNull(entities);
         beforeOperation();
         try{

@@ -78,7 +78,7 @@ public class AbstractStringKeyedDaoTest {
             test.add(e);
         }
         TestEntityDao dao = new TestEntityDao();
-        dao.saveAll(test);
+        dao.save(test);
         checkBeforeAndAfter(dao);
         Iterable<String> ids = transform(test, new Function<NodeterministicEntity, String>(){
 
@@ -111,7 +111,7 @@ public class AbstractStringKeyedDaoTest {
             test.add(e);
         }
         TestEntityDao dao = new TestEntityDao();
-        Map<Key<NodeterministicEntity>, NodeterministicEntity> results = dao.saveAll(test);
+        Map<Key<NodeterministicEntity>, NodeterministicEntity> results = dao.save(test);
         checkBeforeAndAfter(dao);
         dao.reset();
         ArrayList<NodeterministicEntity> initialResults = new ArrayList<NodeterministicEntity>(results.values());
