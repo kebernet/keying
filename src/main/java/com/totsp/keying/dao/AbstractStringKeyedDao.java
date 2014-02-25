@@ -57,8 +57,12 @@ public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeye
             return this.retryHandler.execute(new Callable<T>() {
                 @Override
                 public T call() throws Exception {
+                    T result = ofy().load().key(Key.create(clazz, id)).now();
+                    if(result == null){
+                        throw new NotFoundException();
+                    }
                     return preReturnHook.apply(
-                            ofy().load().key(Key.create(clazz, id)).now()
+                            result
                     );
                 }
             });

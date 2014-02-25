@@ -19,6 +19,8 @@ import com.google.common.base.Objects;
 import com.googlecode.objectify.annotation.Entity;
 import com.googlecode.objectify.annotation.Id;
 import com.googlecode.objectify.annotation.Unindex;
+import com.totsp.keying.definition.KeySegment;
+import com.totsp.keying.definition.KeyStrategy;
 
 /**
  * Created with IntelliJ IDEA.
@@ -29,12 +31,13 @@ import com.googlecode.objectify.annotation.Unindex;
  */
 @Entity
 @Unindex
-public class DeterministicEntity {
+public class DeterministicEntity extends TestEntity {
     @Id
     private String id;
     private String firstName;
     private String lastName;
 
+    @KeyStrategy(value={KeySegment.PROPERTY, KeySegment.PROPERTY}, properties = {"firstName", "lastName"})
     public String getId() {
         return id;
     }

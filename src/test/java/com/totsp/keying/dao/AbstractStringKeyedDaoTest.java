@@ -19,10 +19,12 @@ import com.google.appengine.tools.development.testing.LocalDatastoreServiceTestC
 import com.google.appengine.tools.development.testing.LocalServiceTestHelper;
 import com.google.common.base.Function;
 import com.googlecode.objectify.Key;
+import com.googlecode.objectify.NotFoundException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Map;
@@ -46,6 +48,7 @@ public class AbstractStringKeyedDaoTest {
     @Before
     public void setUp(){
         OfyService.factory().register(NodeterministicEntity.class);
+        OfyService.factory().register(DeterministicEntity.class);
         HELPER.setUp();
 
     }
@@ -122,6 +125,21 @@ public class AbstractStringKeyedDaoTest {
         assertEquals(test, found);
     }
 
+    @Test(expected = NotFoundException.class)
+    public void testThrowsNFE() throws Exception {
+        ArrayList<DeterministicEntity> test = new ArrayList<DeterministicEntity>(100);
+        for(int i=0; i < 100; i++){
+            DeterministicEntity e = new DeterministicEntity();
+            e.setFirstName("Foo");
+            e.setLastName(""+i);
+            test.add(e);
+        }
+        TestDetEnDap dao = new TestDetEnDap();
+        dao.save(test);
+        assertNotNull(dao.findById("Foo:1"));
+        dao.findById("Foo:101");
+    }
+
     public void testDelete() throws Exception {
 
     }
@@ -142,9 +160,15 @@ public class AbstractStringKeyedDaoTest {
         assertTrue(dao.beforeCalled);
         assertTrue(dao.afterCalled);
     }
+    static class TestDetEnDap extends AbstractStringKeyedDao<DeterministicEntity> {
 
-
-
+        /**
+         * The factory must be injected by the implementing class
+         */
+        public TestDetEnDap() {
+            super(DeterministicEntity.class);
+        }
+    }
 
     static class TestEntityDao extends AbstractStringKeyedDao<NodeterministicEntity> {
         private boolean beforeCalled;

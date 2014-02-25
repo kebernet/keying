@@ -33,7 +33,7 @@ import java.io.Serializable;
  */
 @Entity
 @Unindex
-public class NodeterministicEntity implements Serializable {
+public class NodeterministicEntity extends TestEntity {
 
     @Id
     private String id;

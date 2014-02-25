@@ -23,7 +23,7 @@
 
     <groupId>com.totsp</groupId>
     <artifactId>keying</artifactId>
-    <version>1.0.11</version>
+    <version>1.0.13</version>
 
     <distributionManagement>
         <repository>
