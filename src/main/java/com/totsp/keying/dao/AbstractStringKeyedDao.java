@@ -58,7 +58,7 @@ public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeye
                 @Override
                 public T call() throws Exception {
                     T result = ofy().load().key(Key.create(clazz, id)).now();
-                    if(result == null){
+                    if (result == null) {
                         throw new NotFoundException();
                     }
                     return preReturnHook.apply(
@@ -66,9 +66,9 @@ public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeye
                     );
                 }
             });
-        } catch(NotFoundException e){
+        } catch (NotFoundException e) {
             throw e;
-        } catch(Exception e){
+        } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {
             afterOperation();
@@ -88,7 +88,7 @@ public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeye
         try {
             //Only retry saves if the entity has a key or the key is
             //deterministic to try and avoid dupes.
-            if(KeyGenerator.hasKey(entity)){
+            if (KeyGenerator.hasKey(entity)) {
                 return retryHandler.executeRuntime(new Callable<Key<R>>() {
                     @Override
                     public Key<R> call() throws Exception {
@@ -104,10 +104,10 @@ public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeye
     }
 
     @SuppressWarnings("unchecked")
-    private <R extends T> Key<R> saveImpl(R entity){
+    private <R extends T> Key<R> saveImpl(R entity) {
         R value = KeyGenerator.key(entity);
         value = (R) preSaveHook.apply(value);
-        return  ofy().save().entity(value).now();
+        return ofy().save().entity(value).now();
     }
 
     /**
@@ -120,10 +120,10 @@ public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeye
     public <R extends T> Map<Key<R>, R> save(@Nonnull final Iterable<R> entities) {
         checkNotNull(entities);
         beforeOperation();
-        try{
+        try {
             //Only retry saves if the entity has a key or the key is
             //deterministic to try and avoid dupes.
-            if(KeyGenerator.haveKeys(entities)){
+            if (KeyGenerator.haveKeys(entities)) {
                 return retryHandler.executeRuntime(new Callable<Map<Key<R>, R>>() {
                     @Override
                     public Map<Key<R>, R> call() throws Exception {
@@ -139,13 +139,12 @@ public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeye
     }
 
     @SuppressWarnings("unchecked")
-    private <R extends T> Map<Key<R>, R> saveAllImpl(final Iterable<R> entities){
+    private <R extends T> Map<Key<R>, R> saveAllImpl(final Iterable<R> entities) {
         @SuppressWarnings("unchecked")
-        Iterable<R> values = transform(entities, (Function<? super R,? extends R>) KeyGenerator.KEYING_FUNCTION);
+        Iterable<R> values = transform(entities, (Function<? super R, ? extends R>) KeyGenerator.KEYING_FUNCTION);
         values = (Iterable<R>) transform(values, preSaveHook);
         return ofy().save().entities(values).now();
     }
-
 
 
     /**
@@ -158,13 +157,13 @@ public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeye
      */
     @Override
     public LoadResult<T> findAsync(@Nonnull String id) {
-       checkNotNull(id);
-       beforeOperation();
-       try {
-        return ofy().load().key(Key.create(clazz, id));
-       } finally {
-           afterOperation();
-       }
+        checkNotNull(id);
+        beforeOperation();
+        try {
+            return ofy().load().key(Key.create(clazz, id));
+        } finally {
+            afterOperation();
+        }
     }
 
     /**
@@ -175,14 +174,14 @@ public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeye
      * @return all entities that match on the collection of ids. no error is thrown for entities not found in datastore.
      */
     @Override
-    public Map<String, T> findByIds(@Nonnull final Iterable <String> ids) {
+    public Map<String, T> findByIds(@Nonnull final Iterable<String> ids) {
         checkNotNull(ids);
         beforeOperation();
         try {
-        return this.retryHandler.executeRuntime(new Callable<Map<String, T>>() {
+            return this.retryHandler.executeRuntime(new Callable<Map<String, T>>() {
                 @Override
                 public Map<String, T> call() throws Exception {
-                    Map<String, T> result =  ofy().load().type(clazz).ids(ids);
+                    Map<String, T> result = ofy().load().type(clazz).ids(ids);
                     applyPreReturnHook(result.values());
                     return result;
                 }
@@ -198,7 +197,7 @@ public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeye
      *
      * @param keys the set of keys matching against those entities to be retrieved from the datastore
      * @return all entities that match on the collection of keys. no error is thrown for entities not found in
-     *         datastore.
+     * datastore.
      */
     @Override
     @SuppressWarnings("unchecked")
@@ -257,7 +256,7 @@ public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeye
                 @Override
                 public Object call() throws Exception {
                     @SuppressWarnings("unchecked")
-                    Iterable<T> finalEntities = transform(entities, (Function<? super T,? extends T>) KeyGenerator.KEYING_FUNCTION);
+                    Iterable<T> finalEntities = transform(entities, (Function<? super T, ? extends T>) KeyGenerator.KEYING_FUNCTION);
                     finalEntities = transform(finalEntities, preSaveHook);
                     return ofy().delete().entities(finalEntities).now();
                 }
@@ -271,6 +270,7 @@ public class AbstractStringKeyedDao<T extends Serializable> extends AbstractKeye
      * delete entities from datastore that match against the passed in collection keys must be of a type string with the
      * injected objectify factory
      * <p/>
+     *
      * @param stringKeys the keys to delete
      */
     @Override
