@@ -123,14 +123,14 @@ public class RetryHandler {
         try {
             return callable.call();
         } catch(Exception e){
-            LOGGER.log(Level.FINE, "Caught during "+callable.getClass().getCanonicalName(), e);
-            if(tryNumber < maxTries && predicate.apply(e)){
-                sleepAttempt(tryNumber -1, callable);
-                return execute(++tryNumber, callable);
-            } else {
-                throw e;
-            }
+        LOGGER.log(Level.FINE, "Caught during "+callable.getClass().getCanonicalName(), e);
+        if(tryNumber < maxTries && predicate.apply(e)){
+            sleepAttempt(tryNumber -1, callable);
+            return execute(++tryNumber, callable);
+        } else {
+            throw e;
         }
+    }
     }
 
     private void sleepAttempt(int tryNumber, Callable callable) {

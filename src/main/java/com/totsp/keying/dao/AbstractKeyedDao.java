@@ -16,6 +16,8 @@
 package com.totsp.keying.dao;
 
 import com.google.appengine.api.datastore.Cursor;
+import com.google.appengine.api.datastore.DatastoreFailureException;
+import com.google.appengine.api.datastore.DatastoreTimeoutException;
 import com.google.appengine.api.datastore.QueryResultIterator;
 import com.google.appengine.api.memcache.MemcacheServiceException;
 import com.google.apphosting.api.ApiProxy;
@@ -29,6 +31,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.ConcurrentModificationException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -52,7 +55,8 @@ public abstract class AbstractKeyedDao<T extends Serializable, K extends Seriali
             .retryTimes(ERROR_TRY_NUM)
             .every(ERROR_BACKOFF_MILLIS, TimeUnit.MILLISECONDS)
             .withBackoffStrategy(RetryHandler.Builder.EXPONENTIAL)
-            .forExceptions(ApiProxy.RPCFailedException.class, MemcacheServiceException.class)
+            .forExceptions(ApiProxy.RPCFailedException.class, MemcacheServiceException.class,
+                    DatastoreTimeoutException.class, DatastoreFailureException.class, ConcurrentModificationException.class)
             .build();
     /**
      * The class type this DAO is for.
